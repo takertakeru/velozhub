@@ -5,6 +5,9 @@ dist-ssr
 *.local
 *.local.md
 
+# Local secrets (Supabase keys etc.) - never commit
+.env
+
 *.tsbuildinfo
 
 *storybook.log

@@ -4,41 +4,50 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "@tanstack/react-router";
 import { AuthLayout } from "@/components/layouts/auth-layout";
 import { Button } from "@/components/ui/button";
-import { InputField, PasswordInputField } from "@/components/ui/input";
-import { Link } from "@/components/ui/link";
-import { Text, TextLink, Title } from "@/components/ui/text";
+import { PasswordInputField } from "@/components/ui/input";
+import { Option, SelectField } from "@/components/ui/select";
+import { Text, Title } from "@/components/ui/text";
 import { authProvider } from "@/features/auth/provider";
 import { getErrorMessage } from "@/libs/query/query-error";
 import { MutationErrorBanner } from "@/libs/query/query-resolver";
 
+// Name to email mapping. These must match the emails you created in Supabase.
+const drivers = [
+  { name: "Siekie", email: "siekie@gmail.com" },
+  { name: "Joahn", email: "internationaljcb@gmail.com" },
+  { name: "Takeru", email: "takertakeru@gmail.com" },
+  { name: "Khyle", email: "sabrinakhyle@gmail.com" },
+  { name: "Ian", email: "iankarl.epis123@gmail.com" },
+];
+
 const schema = z.object({
-  username: z.string().min(1, "Email is required."),
+  name: z.string().min(1, "Please select your name."),
   password: z.string().min(1, "Password is required."),
 });
 
+type FormData = z.infer<typeof schema>;
+
 export function LoginFlowForm() {
   const navigate = useNavigate();
-  const form = useForm({
-    defaultValues: {
-      username: "",
-      password: "",
-    },
+  const form = useForm<FormData>({
+    defaultValues: { name: "", password: "" },
     resolver: zodResolver(schema),
   });
 
   const onSubmitHandler = form.handleSubmit(async (data) => {
+    const driver = drivers.find((d) => d.name === data.name);
+
+    if (!driver) {return;}
+
     const result = await authProvider
-      .signIn({ username: data.username, password: data.password })
+      .signIn({ username: driver.email, password: data.password })
       .catch((error) => {
         form.setError("root", { message: getErrorMessage(error) });
 
-      return null;
+        return null;
       });
 
-    if (!result) {
-      return;
-    }
-
+    if (!result) {return;}
     if (result.kind === "confirmSignUp") {
       await authProvider.resendSignUpCode(result.username);
       void navigate({
@@ -61,42 +70,39 @@ export function LoginFlowForm() {
         className="grid w-full max-w-sm grid-cols-1 gap-8"
         onSubmit={onSubmitHandler}
       >
-        <span className="bg-brand-primary inline rounded p-4">
-          <img
-            src="https://www.ingenuity.ph/wp-content/uploads/2024/02/ingenuity-logo-2020_-light.png"
-            alt="Ingenuity"
-            className="h-5"
-          />
-        </span>
-        <Title>Sign in to your account</Title>
+        <div>
+          <Title size="lg">VelozHub</Title>
+          <Text color="neutral" className="mt-2">
+            Shared car booking for the household Toyota Veloz.
+          </Text>
+        </div>
+
         <MutationErrorBanner errorMessage={rootError} label="Login Error" />
-        <InputField
+
+        <SelectField
           control={form.control}
-          field="username"
-          label="Email Address"
-        />
+          field="name"
+          label="Who are you?"
+          placeholder="Select your name"
+        >
+          {drivers.map((driver) => {
+            return (
+              <Option key={driver.name} id={driver.name}>
+                {driver.name}
+              </Option>
+            );
+          })}
+        </SelectField>
+
         <PasswordInputField
           control={form.control}
           field="password"
           label="Password"
         />
-        <div className="flex items-center justify-between">
-          <TextLink
-            to="/reset-password"
-            className="ml-auto font-medium hover:text-neutral-700 hover:underline"
-          >
-            Forgot password?
-          </TextLink>
-        </div>
+
         <Button type="submit" className="w-full" isPending={isLoading}>
-          Login
+          Sign In
         </Button>
-        <Text>
-          Don&apos;t have an account?{" "}
-          <Link to="/register" className="font-medium hover:text-neutral-700">
-            Sign Up
-          </Link>
-        </Text>
       </form>
     </AuthLayout>
   );

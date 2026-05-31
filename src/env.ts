@@ -9,7 +9,11 @@ export const env = createEnv({
   clientPrefix: "VITE_",
 
   client: {
-    VITE_API_URL: z.string().min(1),
+    // Supabase: required. URL + anon (public) key from Project Settings > API.
+    VITE_SUPABASE_URL: z.string().url(),
+    VITE_SUPABASE_ANON_KEY: z.string().min(1),
+    // Optional legacy custom-backend URL (unused once auth runs on Supabase).
+    VITE_API_URL: z.string().optional(),
     // Cognito values is only required if you switch the active auth provider in
     // `src/features/auth/provider.ts` from `apiAuthProvider` to `cognitoAuthProvider`.
     VITE_COGNITO_POOL_ID: z.string().optional(),

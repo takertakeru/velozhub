@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VelozHub — Screens</title>
+  <link rel="stylesheet" href="styles/veloz.css" />
+  <style>
+    :root { --pg:#EAEDF2; --pg-ink:#0E1420; --pg-mut:#5A6376; --pg-line:#D6DBE3; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; }
+    body { background: var(--pg); color: var(--pg-ink); font-family: 'Hanken Grotesk', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+    body.dark { --pg:#0A0D13; --pg-ink:#EEF2F8; --pg-mut:#9AA4B2; --pg-line:#28303C; }
+
+    .show-top {
+      position: sticky; top: 0; z-index: 100; display: flex; align-items: center; gap: 16px;
+      padding: 16px 28px; background: color-mix(in srgb, var(--pg) 86%, transparent); backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--pg-line);
+    }
+    .show-top .ttl { font-weight: 800; font-size: 20px; letter-spacing: -.02em; display: flex; align-items: center; gap: 10px; }
+    .show-top .ttl svg { width: 28px; height: 28px; }
+    .show-top .sp { flex: 1; }
+    .seg { display: inline-flex; background: color-mix(in srgb, var(--pg-ink) 8%, transparent); border-radius: 999px; padding: 4px; gap: 4px; }
+    .seg button { border: none; background: none; font: inherit; font-weight: 700; font-size: 14px; color: var(--pg-mut); padding: 7px 16px; border-radius: 999px; cursor: pointer; }
+    .seg button.on { background: var(--pg-ink); color: var(--pg); }
+    .linkbtn { font-weight: 700; font-size: 14px; color: var(--pg-ink); text-decoration: none; border: 1.5px solid var(--pg-line); padding: 8px 16px; border-radius: 10px; }
+    .linkbtn:hover { background: color-mix(in srgb, var(--pg-ink) 6%, transparent); }
+
+    .wrap { max-width: 1400px; margin: 0 auto; padding: 32px 28px 120px; }
+    .intro { margin: 8px 0 40px; max-width: 720px; }
+    .intro h1 { font-size: 34px; font-weight: 800; letter-spacing: -.03em; margin: 0 0 10px; }
+    .intro p { font-size: 16px; line-height: 1.6; color: var(--pg-mut); margin: 0; }
+
+    .section { margin-bottom: 64px; }
+    .section > .head { margin-bottom: 20px; }
+    .section .kick { font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--pg-mut); }
+    .section h2 { font-size: 26px; font-weight: 800; letter-spacing: -.02em; margin: 4px 0 6px; }
+    .section .desc { color: var(--pg-mut); font-size: 15px; line-height: 1.55; max-width: 760px; }
+
+    .frames { display: flex; flex-wrap: wrap; gap: 40px; align-items: flex-start; }
+    .framecol { }
+    .framelabel { font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--pg-mut); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+    .framelabel .dim { font-weight: 600; letter-spacing: 0; text-transform: none; color: color-mix(in srgb, var(--pg-mut) 75%, transparent); }
+
+    /* Phone bezel */
+    .phone { width: 390px; height: 812px; border-radius: 44px; padding: 12px; background: #0A0D13;
+      box-shadow: 0 30px 70px rgba(16,23,42,.28), inset 0 0 0 2px #2a2f3a; flex: none; }
+    body.dark .phone { box-shadow: 0 30px 70px rgba(0,0,0,.6), inset 0 0 0 2px #333a47; }
+    .phone .screen { width: 100%; height: 100%; border-radius: 33px; overflow: hidden; position: relative; background: #fff; }
+
+    /* Desktop window */
+    .deskscroll { overflow-x: auto; padding-bottom: 8px; max-width: 100%; }
+    .desktop { width: 1240px; height: 760px; border-radius: 16px; overflow: hidden; background: #fff; flex: none;
+      box-shadow: 0 30px 70px rgba(16,23,42,.22), 0 0 0 1px var(--pg-line); }
+    body.dark .desktop { box-shadow: 0 30px 70px rgba(0,0,0,.55), 0 0 0 1px #28303c; }
+    .desktop .bar { height: 40px; display: flex; align-items: center; gap: 8px; padding: 0 16px; background: #e9ecf2; border-bottom: 1px solid #d6dbe3; }
+    body.dark .desktop .bar { background: #11151d; border-color: #28303c; }
+    .desktop .bar i { width: 11px; height: 11px; border-radius: 50%; display: block; }
+    .desktop .bar .u { background: #f0b429; } .desktop .bar .r { background: #ee5a52; } .desktop .bar .g { background: #2dbb56; }
+    .desktop .bar .addr { margin-left: 16px; font-size: 12px; color: #8a93a3; font-weight: 600; }
+    .desktop .vp { width: 100%; height: calc(100% - 40px); position: relative; }
+
+    .mountpoint { width: 100%; height: 100%; }
+  </style>
+</head>
+<body>
+  <div class="show-top">
+    <div class="ttl"><svg viewBox="0 0 32 32" fill="none"><rect x="1" y="1" width="30" height="30" rx="9" fill="#0E1420"></rect><path d="M9 10.5l4.6 11a1.2 1.2 0 0 0 2.2 0l4.6-11" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path><path d="M21.5 10.5h2.2" stroke="#16A34A" stroke-width="2.6" stroke-linecap="round"></path></svg> VelozHub</div>
+    <div class="sp"></div>
+    <div class="seg" id="modeseg">
+      <button data-m="light" class="on">Light</button>
+      <button data-m="dark">Dark</button>
+    </div>
+    <a class="linkbtn" href="VelozHub.html">Open live app →</a>
+    <a class="linkbtn" href="VelozHub Design System.html">Design system →</a>
+  </div>
+
+  <div class="wrap">
+    <div class="intro">
+      <h1>VelozHub screens</h1>
+      <p>One shared Toyota Veloz, five drivers, zero double-bookings. Every frame below is the live, interactive app responding to its own width through container queries. Tap a booking, toggle All day, try an overlapping time. Flip the whole set between light and dark up top.</p>
+    </div>
+    <div id="sections"></div>
+  </div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script src="app/veloz-core.js"></script>
+  <script type="text/babel" src="app/veloz-icons.jsx"></script>
+  <script type="text/babel" src="app/veloz-components.jsx"></script>
+  <script type="text/babel" src="app/veloz-app.jsx"></script>
+
+  <script type="text/babel" data-presets="env,react">
+    const { useState, useEffect } = React;
+
+    const SCREENS = [
+      { id: 'home', kick: 'Screen 01', title: 'Home · Who has it now', screen: 'home',
+        desc: "A live status banner answers the only question that matters first, then today's bookings as a tap-friendly agenda. On desktop the width earns its keep: today on the left, the next three days stacked on the right." },
+      { id: 'week', kick: 'Screen 02', title: 'Week view', screen: 'week',
+        desc: "Phone gets a thin two-week day selector above the agenda. Desktop fans the whole week out as seven scannable columns so the family can plan at a glance." },
+      { id: 'new', kick: 'Screen 03', title: 'New booking', screen: 'new',
+        desc: "Date, an All-day toggle that hides the time fields, optional riders, a short note, and a live overlap check. Full screen sheet on phone, centered modal on desktop. Try setting 9:00 to 10:00 today to see the clash with Mom." },
+      { id: 'detail-mine', kick: 'Screen 04a', title: 'Booking detail · yours', screen: 'detail', detailId: 'bk101',
+        desc: "Your own trip: full edit and cancel, with a two-step confirm so nobody cancels by accident." },
+      { id: 'detail-locked', kick: 'Screen 04b', title: 'Booking detail · someone else', screen: 'detail', detailId: 'bk102',
+        desc: "Anyone can open any booking, but editing is locked to the person who made it. Riders show as colored chips." },
+    ];
+
+    function Mount({ screen, detailId, theme }) {
+      const ref = React.useRef(null);
+      const rootRef = React.useRef(null);
+      useEffect(() => {
+        rootRef.current = window.VelozApp.mount(ref.current, {
+          initialScreen: screen, initialDetailId: detailId, theme, persist: false, showThemeToggle: false,
+        });
+        return () => { try { rootRef.current && rootRef.current.unmount(); } catch (e) {} };
+      }, []);
+      // re-render with new theme
+      useEffect(() => {
+        if (rootRef.current) {
+          rootRef.current.render(React.createElement(window.VelozApp.VelozRoot, {
+            initialScreen: screen, initialDetailId: detailId, theme, persist: false, showThemeToggle: false,
+          }));
+        }
+      }, [theme]);
+      return <div className="mountpoint" ref={ref} />;
+    }
+
+    function Section({ s, theme }) {
+      return (
+        <div className="section">
+          <div className="head">
+            <div className="kick">{s.kick}</div>
+            <h2>{s.title}</h2>
+            <div className="desc">{s.desc}</div>
+          </div>
+          <div className="frames">
+            <div className="framecol">
+              <div className="framelabel">Phone <span className="dim">390 px</span></div>
+              <div className="phone"><div className="screen"><Mount screen={s.screen} detailId={s.detailId} theme={theme} /></div></div>
+            </div>
+            <div className="framecol" style={{ flex: '1 1 700px', minWidth: 0 }}>
+              <div className="framelabel">Desktop <span className="dim">1280 px</span></div>
+              <div className="deskscroll">
+                <div className="desktop">
+                  <div className="bar"><i className="r"></i><i className="u"></i><i className="g"></i><span className="addr">velozhub.app</span></div>
+                  <div className="vp"><Mount screen={s.screen} detailId={s.detailId} theme={theme} /></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function Showcase() {
+      const [theme, setTheme] = useState('light');
+      useEffect(() => {
+        document.body.classList.toggle('dark', theme === 'dark');
+        document.querySelectorAll('#modeseg button').forEach((b) => b.classList.toggle('on', b.dataset.m === theme));
+      }, [theme]);
+      useEffect(() => {
+        const seg = document.getElementById('modeseg');
+        const fn = (e) => { const b = e.target.closest('button'); if (b) setTheme(b.dataset.m); };
+        seg.addEventListener('click', fn);
+        return () => seg.removeEventListener('click', fn);
+      }, []);
+      return <>{SCREENS.map((s) => <Section key={s.id} s={s} theme={theme} />)}</>;
+    }
+
+    ReactDOM.createRoot(document.getElementById('sections')).render(<Showcase />);
+  </script>
+</body>
+</html>

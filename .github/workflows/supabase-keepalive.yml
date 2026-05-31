@@ -1,0 +1,25 @@
+name: Supabase keep-alive
+
+# Supabase free-tier projects pause after a week with no activity. This runs a
+# trivial daily REST query so the database stays awake. Set two repo secrets:
+#   SUPABASE_URL       e.g. https://abcdefgh.supabase.co
+#   SUPABASE_ANON_KEY  the project's anon/public key
+# (Settings > Secrets and variables > Actions.)
+
+on:
+  schedule:
+    # 07:17 UTC daily. The offset keeps it off the top-of-hour rush.
+    - cron: "17 7 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trivial query against Supabase
+        run: |
+          curl -fsS \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+            "${{ secrets.SUPABASE_URL }}/rest/v1/vehicles?select=id&limit=1" \
+            -o /dev/null -w "keep-alive HTTP %{http_code}\n"

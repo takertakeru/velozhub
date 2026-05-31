@@ -3,6 +3,7 @@ import { defineConfig } from "vite";
 import viteReact from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { TanStackRouterVite } from "@tanstack/router-plugin/vite";
+import { VitePWA } from "vite-plugin-pwa";
 import { resolve } from "node:path";
 
 // https://vitejs.dev/config/
@@ -22,6 +23,37 @@ export default defineConfig({
     }),
     viteReact(),
     tailwindcss(),
+    VitePWA({
+      // Auto-update the service worker in the background; no update prompt UI.
+      registerType: "autoUpdate",
+      includeAssets: ["favicon.ico", "robots.txt", "logo192.png", "logo512.png"],
+      manifest: {
+        name: "VelozHub",
+        short_name: "VelozHub",
+        description: "Shared-car booking for the household Toyota Veloz.",
+        theme_color: "#16a34a",
+        background_color: "#ffffff",
+        display: "standalone",
+        start_url: "/",
+        icons: [
+          { src: "logo192.png", sizes: "192x192", type: "image/png" },
+          { src: "logo512.png", sizes: "512x512", type: "image/png" },
+          {
+            src: "logo512.png",
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "any maskable",
+          },
+        ],
+      },
+      workbox: {
+        // SPA fallback so deep links work offline.
+        navigateFallback: "/index.html",
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+      },
+      // Flip to true if you want to test the installable PWA in `yarn dev`.
+      devOptions: { enabled: false },
+    }),
   ],
   test: {
     globals: true,

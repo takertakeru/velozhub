@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VelozHub — Design System</title>
+  <link rel="stylesheet" href="styles/veloz.css" />
+  <style>
+    :root { --pg:#F3F5F8; --pg-ink:#0E1420; --pg-mut:#5A6376; --pg-line:#E2E6EC; --pg-card:#fff; }
+    body.dark { --pg:#0A0D13; --pg-ink:#EEF2F8; --pg-mut:#9AA4B2; --pg-line:#28303C; --pg-card:#151A22; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; }
+    body { background: var(--pg); color: var(--pg-ink); font-family: 'Hanken Grotesk', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+
+    .top { position: sticky; top: 0; z-index: 50; display: flex; align-items: center; gap: 14px; padding: 16px 32px; background: color-mix(in srgb, var(--pg) 88%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--pg-line); }
+    .top .b { font-weight: 800; font-size: 19px; letter-spacing: -.02em; display: flex; align-items: center; gap: 10px; }
+    .top .b svg { width: 26px; height: 26px; }
+    .top .sp { flex: 1; }
+    .seg { display: inline-flex; background: color-mix(in srgb, var(--pg-ink) 8%, transparent); border-radius: 999px; padding: 4px; gap: 4px; }
+    .seg button { border: none; background: none; font: inherit; font-weight: 700; font-size: 13px; color: var(--pg-mut); padding: 7px 15px; border-radius: 999px; cursor: pointer; }
+    .seg button.on { background: var(--pg-ink); color: var(--pg); }
+    .linkbtn { font-weight: 700; font-size: 13px; color: var(--pg-ink); text-decoration: none; border: 1.5px solid var(--pg-line); padding: 8px 15px; border-radius: 10px; }
+
+    .wrap { max-width: 1080px; margin: 0 auto; padding: 40px 32px 120px; }
+    .lead { margin-bottom: 56px; }
+    .lead .kick { font-size: 12px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--pg-mut); }
+    .lead h1 { font-size: 42px; font-weight: 800; letter-spacing: -.03em; margin: 8px 0 14px; }
+    .lead p { font-size: 17px; line-height: 1.6; color: var(--pg-mut); max-width: 680px; margin: 0; }
+
+    section { margin-bottom: 56px; }
+    .sec-h { display: flex; align-items: baseline; gap: 12px; margin-bottom: 8px; border-bottom: 1px solid var(--pg-line); padding-bottom: 12px; }
+    .sec-h .n { font-size: 13px; font-weight: 800; color: var(--pg-mut); font-variant-numeric: tabular-nums; }
+    .sec-h h2 { font-size: 24px; font-weight: 800; letter-spacing: -.02em; margin: 0; }
+    .sec-note { color: var(--pg-mut); font-size: 14.5px; line-height: 1.55; margin: 14px 0 22px; max-width: 720px; }
+
+    .grid { display: grid; gap: 16px; }
+    .card { background: var(--pg-card); border: 1px solid var(--pg-line); border-radius: 16px; padding: 22px; }
+    .card .lab { font-size: 12px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--pg-mut); margin-bottom: 14px; }
+
+    /* color */
+    .swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px,1fr)); gap: 14px; }
+    .sw { border: 1px solid var(--pg-line); border-radius: 14px; overflow: hidden; background: var(--pg-card); }
+    .sw .chip-c { height: 76px; display: flex; align-items: flex-end; padding: 10px; }
+    .sw .meta { padding: 11px 13px; }
+    .sw .nm { font-weight: 700; font-size: 14px; }
+    .sw .hex { font-size: 12px; color: var(--pg-mut); font-variant-numeric: tabular-nums; text-transform: uppercase; margin-top: 2px; }
+    .sw .person-mini { display: flex; align-items: center; gap: 8px; }
+
+    .neutrals { display: flex; flex-wrap: wrap; gap: 10px; }
+    .neu { width: 116px; border: 1px solid var(--pg-line); border-radius: 12px; overflow: hidden; }
+    .neu .b { height: 56px; } .neu .t { padding: 8px 10px; font-size: 11.5px; }
+    .neu .t b { display: block; font-size: 12.5px; } .neu .t span { color: var(--pg-mut); font-variant-numeric: tabular-nums; }
+
+    /* type scale */
+    .type-row { display: flex; align-items: baseline; gap: 20px; padding: 14px 0; border-top: 1px solid var(--pg-line); }
+    .type-row:first-child { border-top: none; }
+    .type-row .tag { width: 130px; flex: none; color: var(--pg-mut); font-size: 12.5px; font-weight: 700; }
+    .type-row .tag span { display: block; font-weight: 500; font-variant-numeric: tabular-nums; opacity: .8; }
+    .type-row .ex { font-family: 'Hanken Grotesk'; color: var(--pg-ink); }
+
+    .spacescale { display: flex; align-items: flex-end; gap: 14px; flex-wrap: wrap; }
+    .spc { text-align: center; }
+    .spc .bar { background: var(--c-leo); border-radius: 4px 4px 0 0; width: 30px; margin: 0 auto 8px; }
+    .spc .v { font-size: 11.5px; color: var(--pg-mut); font-variant-numeric: tabular-nums; }
+    .spc .k { font-size: 12px; font-weight: 700; }
+
+    .radii { display: flex; gap: 16px; flex-wrap: wrap; }
+    .rad { text-align: center; }
+    .rad .box { width: 84px; height: 64px; background: color-mix(in srgb, var(--c-dad) 16%, var(--pg-card)); border: 1.5px solid var(--c-dad); }
+    .rad .k { font-size: 12px; font-weight: 700; margin-top: 8px; } .rad .v { font-size: 11.5px; color: var(--pg-mut); }
+
+    .bp-row { display: flex; gap: 12px; flex-wrap: wrap; }
+    .bp { flex: 1 1 200px; border: 1px solid var(--pg-line); border-radius: 14px; padding: 18px; background: var(--pg-card); }
+    .bp .w { font-size: 22px; font-weight: 800; letter-spacing: -.02em; }
+    .bp .nm { font-weight: 700; margin: 4px 0; } .bp .d { font-size: 13px; color: var(--pg-mut); line-height: 1.5; }
+
+    .comp-grid { display: grid; grid-template-columns: 1fr; gap: 18px; }
+    @media (min-width: 760px) { .comp-grid.two { grid-template-columns: 1fr 1fr; } }
+    .demo { background: var(--pg-card); border: 1px solid var(--pg-line); border-radius: 16px; padding: 20px; }
+    .demo .lab { font-size: 12px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--pg-mut); margin-bottom: 14px; }
+    .demo .veloz { background: transparent; height: auto; overflow: visible; container-type: normal; }
+    .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  </style>
+</head>
+<body>
+  <div class="top">
+    <div class="b"><svg viewBox="0 0 32 32" fill="none"><rect x="1" y="1" width="30" height="30" rx="9" fill="#0E1420"></rect><path d="M9 10.5l4.6 11a1.2 1.2 0 0 0 2.2 0l4.6-11" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path><path d="M21.5 10.5h2.2" stroke="#16A34A" stroke-width="2.6" stroke-linecap="round"></path></svg> VelozHub</div>
+    <div class="sp"></div>
+    <div class="seg" id="seg"><button data-m="light" class="on">Light</button><button data-m="dark">Dark</button></div>
+    <a class="linkbtn" href="VelozHub Screens.html">Screens</a>
+    <a class="linkbtn" href="VelozHub.html">Live app →</a>
+  </div>
+
+  <div class="wrap">
+    <div class="lead">
+      <div class="kick">Design System</div>
+      <h1>VelozHub</h1>
+      <p>A small, utilitarian system for a shared-car schedule. Neutral chrome keeps the interface calm and high-contrast for outdoor use, while five fixed person-colors do the heavy lifting: at a glance you know whose trip is whose. Built mobile-first and adapted up, not stretched.</p>
+    </div>
+
+    <!-- COLORS -->
+    <section>
+      <div class="sec-h"><span class="n">01</span><h2>Color</h2></div>
+      <div class="sec-note">Every family member owns one color, used on their bookings everywhere: dot, chip, avatar, agenda rail, and week block. Hues were chosen to stay distinct for color-vision differences and to hold contrast in both themes.</div>
+      <div class="card" style="margin-bottom:16px">
+        <div class="lab">People</div>
+        <div class="swatches" id="people"></div>
+      </div>
+      <div class="grid" style="grid-template-columns: 1fr; gap:16px">
+        <div class="card">
+          <div class="lab">Semantic &amp; accent</div>
+          <div class="swatches" id="semantic"></div>
+        </div>
+        <div class="card">
+          <div class="lab">Neutrals · light</div>
+          <div class="neutrals" id="neu-light"></div>
+        </div>
+        <div class="card">
+          <div class="lab">Neutrals · dark</div>
+          <div class="neutrals" id="neu-dark"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TYPE -->
+    <section>
+      <div class="sec-h"><span class="n">02</span><h2>Typography</h2></div>
+      <div class="sec-note">One typeface, Hanken Grotesk, a humanist grotesk that is friendly but crisp. Tabular figures are used for all times so columns of clock values stay aligned. On 1920-class screens nothing drops below 14px; tap targets never below 44px.</div>
+      <div class="card">
+        <div id="typescale"></div>
+      </div>
+    </section>
+
+    <!-- SPACING -->
+    <section>
+      <div class="sec-h"><span class="n">03</span><h2>Spacing, radius &amp; breakpoints</h2></div>
+      <div class="grid" style="grid-template-columns:1fr; gap:16px">
+        <div class="card"><div class="lab">Spacing · 4px base</div><div class="spacescale" id="space"></div></div>
+        <div class="card"><div class="lab">Radius</div><div class="radii" id="radii"></div></div>
+        <div class="card"><div class="lab">Responsive breakpoints (container width)</div>
+          <div class="bp-row">
+            <div class="bp"><div class="w">≤ 719</div><div class="nm">Phone</div><div class="d">Single column. Top bar + bottom tab bar with a center New button. Bottom sheets.</div></div>
+            <div class="bp"><div class="w">720–1039</div><div class="nm">Wide / tablet</div><div class="d">Same shell, roomier measure and larger banner type.</div></div>
+            <div class="bp"><div class="w">≥ 1040</div><div class="nm">Desktop</div><div class="d">Left sidebar nav. Multi-column home, 7-column week, centered modals.</div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- COMPONENTS -->
+    <section>
+      <div class="sec-h"><span class="n">04</span><h2>Components</h2></div>
+      <div class="sec-note">The handful of parts the whole app is built from. All shown in the active theme; flip the toggle up top to check both.</div>
+
+      <div class="comp-grid">
+        <div class="demo"><div class="lab">Status banner · free</div>
+          <div class="veloz">
+            <div class="banner is-free">
+              <div class="banner-content">
+                <div class="banner-state"><span class="pulse"></span><span class="state-label">Available now</span></div>
+                <h1>The car is free.</h1>
+                <div class="next-pill"><span class="avatar sm" style="--pc:var(--c-leo)">L</span> Next: Leo at 1 PM</div>
+              </div>
+              <img class="banner-car" src="assets/veloz.png" alt="Toyota Veloz" aria-hidden="true">
+            </div>
+          </div>
+        </div>
+        <div class="demo"><div class="lab">Status banner · in use</div>
+          <div class="veloz">
+            <div class="banner is-busy" style="--pc:var(--c-mom)">
+              <div class="banner-content">
+                <div class="banner-state"><span class="pulse"></span><span class="state-label">In use now</span></div>
+                <h1>Mom has the car until 10:30 AM.</h1>
+                <div class="next-pill"><span class="avatar sm" style="--pc:var(--c-leo)">L</span> Next: Leo at 1 PM</div>
+              </div>
+              <img class="banner-car" src="assets/veloz.png" alt="Toyota Veloz" aria-hidden="true">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="comp-grid" style="margin-top:18px">
+        <div class="demo"><div class="lab">Agenda item · time range</div>
+          <div class="veloz">
+            <button class="agenda-item" style="--pc:var(--c-mom)">
+              <span class="time-col"><span class="time-start tnum">8 AM</span><span class="time-end tnum">to 10:30 AM</span></span>
+              <span class="body">
+                <span class="who"><span class="avatar" style="--pc:var(--c-mom)">M</span><span class="name">Mom</span></span>
+                <span class="meta"><span class="riders"><span class="avatar sm" style="--pc:var(--c-dad)">D</span></span><span>with Dad</span></span>
+                <span class="note">Grocery run then pharmacy pickup</span>
+              </span>
+              <span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg></span>
+            </button>
+          </div>
+        </div>
+        <div class="demo"><div class="lab">Agenda item · all day</div>
+          <div class="veloz">
+            <button class="agenda-item allday" style="--pc:var(--c-dad)">
+              <span class="time-col"><span class="tag-allday"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22"></path></svg> All day</span></span>
+              <span class="body">
+                <span class="who"><span class="avatar" style="--pc:var(--c-dad)">D</span><span class="name">Dad</span></span>
+                <span class="meta"><span class="riders"><span class="avatar sm" style="--pc:var(--c-mom)">M</span></span><span>with Mom</span></span>
+                <span class="note">Road trip to the coast, back late</span>
+              </span>
+              <span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg></span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="comp-grid" style="margin-top:18px">
+        <div class="demo"><div class="lab">Conflict warning</div>
+          <div class="veloz">
+            <div class="warn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 21 19H3z"></path><path d="M12 10v4"></path><circle cx="12" cy="16.6" r="0.6"></circle></svg>
+              <div><div class="w-title">Double-booking</div><div class="w-body">Mom already has the car 8 AM to 10:30 AM.<div style="margin-top:4px;opacity:.85">Pick another time or check with them first.</div></div></div>
+            </div>
+            <div style="height:12px"></div>
+            <div class="warn ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"></circle><path d="M8.5 12.2 11 14.7 15.6 9.5"></path></svg>
+              <div><div class="w-title">No clashes</div><div class="w-body">This time is open. Good to book.</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="demo"><div class="lab">Person chips, tags &amp; controls</div>
+          <div class="veloz">
+            <div class="row" style="margin-bottom:14px">
+              <span class="chip" style="--pc:var(--c-dad)"><span class="person-dot"></span> Dad</span>
+              <span class="chip" style="--pc:var(--c-mom)"><span class="person-dot"></span> Mom</span>
+              <span class="chip" style="--pc:var(--c-ana)"><span class="person-dot"></span> Ana</span>
+              <span class="chip" style="--pc:var(--c-marco)"><span class="person-dot"></span> Marco</span>
+              <span class="chip" style="--pc:var(--c-leo)"><span class="person-dot"></span> Leo</span>
+            </div>
+            <div class="row" style="margin-bottom:14px">
+              <span class="tag-allday"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22"></path></svg> All day</span>
+              <button class="chip selectable" aria-pressed="true" style="--pc:var(--c-ana)"><span class="avatar sm" style="--pc:var(--c-ana)">A</span> Ana</button>
+              <button class="chip selectable" aria-pressed="false" style="--pc:var(--c-marco)"><span class="avatar sm" style="--pc:var(--c-marco)">Mc</span> Marco</button>
+            </div>
+            <div class="row">
+              <button class="btn btn-primary btn-sm">Book the car</button>
+              <button class="btn btn-ghost btn-sm">Cancel</button>
+              <span class="switch" aria-checked="true" style="display:inline-block"><span class="knob"></span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const PEOPLE = [
+      ['Dad','--c-dad','#2563EB','D'], ['Mom','--c-mom','#DB2777','M'], ['Ana','--c-ana','#0D9488','A'],
+      ['Marco','--c-marco','#EA580C','Mc'], ['Leo','--c-leo','#7C3AED','L'],
+    ];
+    document.getElementById('people').innerHTML = PEOPLE.map(([nm,v,hex,ini]) =>
+      `<div class="sw"><div class="chip-c" style="background:${hex}"></div><div class="meta"><div class="person-mini"><span class="nm">${nm}</span></div><div class="hex">${hex}</div></div></div>`).join('');
+
+    const SEM = [['Accent / Free','#16A34A'],['In use','#9A5B00'],['Danger','#DC2626'],['Focus','#2563EB']];
+    document.getElementById('semantic').innerHTML = SEM.map(([nm,hex]) =>
+      `<div class="sw"><div class="chip-c" style="background:${hex}"></div><div class="meta"><span class="nm">${nm}</span><div class="hex">${hex}</div></div></div>`).join('');
+
+    const NL = [['bg','#F3F5F8'],['surface','#FFFFFF'],['surface-2','#F7F8FA'],['border','#E2E6EC'],['ink','#0E1420'],['ink-2','#475067'],['ink-3','#7A8499']];
+    const ND = [['bg','#0A0D13'],['surface','#151A22'],['surface-2','#1B212B'],['border','#28303C'],['ink','#EEF2F8'],['ink-2','#AEB7C5'],['ink-3','#79828F']];
+    const neu = (arr) => arr.map(([nm,hex]) =>
+      `<div class="neu"><div class="b" style="background:${hex}"></div><div class="t"><b>${nm}</b><span>${hex}</span></div></div>`).join('');
+    document.getElementById('neu-light').innerHTML = neu(NL);
+    document.getElementById('neu-dark').innerHTML = neu(ND);
+
+    const TYPE = [
+      ['Display','30 / 800','The car is free.'],
+      ['Title','21 / 800','Today\u2019s bookings'],
+      ['Heading','17 / 700','Mom · 8 AM to 10:30 AM'],
+      ['Body','15.5 / 400','Grocery run then pharmacy pickup'],
+      ['Small','13.5 / 600','with Dad · Solo trip'],
+      ['Micro label','12 / 800 · tracked','IN USE NOW'],
+    ];
+    document.getElementById('typescale').innerHTML = TYPE.map(([nm,spec,ex],i) => {
+      const sizes = [30,21,17,15.5,13.5,12][i];
+      const weights = [800,800,700,400,600,800][i];
+      const extra = i===5 ? 'letter-spacing:.06em;text-transform:uppercase;' : '';
+      return `<div class="type-row"><div class="tag">${nm}<span>${spec}</span></div><div class="ex" style="font-size:${sizes}px;font-weight:${weights};${extra}">${ex}</div></div>`;
+    }).join('');
+
+    const SPACE = [['s1',4],['s2',8],['s3',12],['s4',16],['s5',20],['s6',24],['s7',32],['s8',40],['s9',48]];
+    document.getElementById('space').innerHTML = SPACE.map(([k,v]) =>
+      `<div class="spc"><div class="bar" style="height:${v}px"></div><div class="k">${v}</div><div class="v">${k}</div></div>`).join('');
+
+    const RAD = [['sm',8],['md',12],['lg',16],['xl',22],['pill',999]];
+    document.getElementById('radii').innerHTML = RAD.map(([k,v]) =>
+      `<div class="rad"><div class="box" style="border-radius:${v}px"></div><div class="k">${k}</div><div class="v">${v===999?'full':v+'px'}</div></div>`).join('');
+
+    const seg = document.getElementById('seg');
+    seg.addEventListener('click', (e) => {
+      const b = e.target.closest('button'); if (!b) return;
+      document.body.classList.toggle('dark', b.dataset.m === 'dark');
+      document.querySelectorAll('.veloz').forEach(v => v.setAttribute('data-theme', b.dataset.m));
+      seg.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    });
+  </script>
+</body>
+</html>
