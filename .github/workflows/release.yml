@@ -1,0 +1,71 @@
+name: Frontend Release (Manual)
+
+on:
+    workflow_dispatch:
+        inputs:
+            env:
+                description: "Manual Release Environment"
+                required: true
+                default: staging
+                type: choice
+                options:
+                    - dev
+                    - staging
+                    - prod
+
+permissions:
+    contents: write
+
+jobs:
+    release:
+        runs-on: ubuntu-latest
+        environment: ${{ inputs.env }}
+
+        env:
+            VITE_API_URL: ${{ vars.VITE_API_URL }}
+            VITE_COGNITO_POOL_ID: ${{ vars.VITE_COGNITO_POOL_ID }}
+            VITE_COGNITO_CLIENT_ID: ${{ vars.VITE_COGNITO_CLIENT_ID }}
+            VITE_COGNITO_DOMAIN: ${{ vars.VITE_COGNITO_DOMAIN }}
+            VITE_GOOGLE_MAPS_API_KEY: ${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}
+            VITE_IS_TESTING: ${{ vars.VITE_IS_TESTING }}
+            VITE_ENABLE_FEATURE_FLAGS: ${{ vars.VITE_ENABLE_FEATURE_FLAGS }}
+            GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+
+        steps:
+            # Checkout repo
+            - uses: actions/checkout@v4
+
+            # Setup Node.js 24
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 24
+                  cache: "yarn"
+
+            # Install dependencies
+            - run: yarn install --frozen-lockfile
+
+            # Build frontend
+            - run: yarn build
+
+            # Run semantic-release and get version
+            - name: Run semantic-release
+              id: release
+              env:
+                  GITHUB_TOKEN: ${{ env.GITHUB_TOKEN }}
+              run: |
+                  # Run semantic-release and capture version
+                  VERSION=$(npx semantic-release --no-ci | grep "SemanticRelease:" | grep "Published release" | awk '{print $4}')
+                  echo "VERSION=$VERSION" >> $GITHUB_ENV
+                  echo "Next release version is $VERSION"
+
+            # Zip dist folder with version in filename
+            - name: Zip build folder
+              run: zip -r "aboitiz_streetlight_frontend-v$VERSION.zip" dist/
+
+            # Upload artifact to GitHub Release
+            - name: Upload build artifact
+              uses: softprops/action-gh-release@v2
+              with:
+                  files: "aboitiz_streetlight_frontend-v$VERSION.zip"
+              env:
+                  GITHUB_TOKEN: ${{ env.GITHUB_TOKEN }}

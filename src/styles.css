@@ -1,0 +1,302 @@
+@import "tailwindcss";
+@plugin "tailwindcss-react-aria-components";
+@plugin "tailwindcss-animate";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  [type="search"]::-webkit-search-cancel-button,
+  [type="search"]::-webkit-search-decoration {
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  :root {
+  }
+  html,
+  body,
+  #app {
+    height: 100%;
+    overflow: hidden;
+  }
+}
+
+@utility surface-inset {
+  box-sizing: border-box;
+
+  /* We reset the defined margin variables to avoid inheriting them from a higher component */
+  /* If a margin IS defined on the component itself, the utility class will win and reset it */
+  --margin-top: 0px;
+  --margin-right: 0px;
+  --margin-bottom: 0px;
+  --margin-left: 0px;
+
+  overflow: hidden;
+
+  /*
+   * Note: Next.js may collapse this into a shorthand "margin" declaration when bundling the CSS.
+   * If any of the variables are set to "initial", the shorthand syntax will become invalid and botch the Inset styles.
+   */
+  margin-top: var(--margin-top-override);
+  margin-right: var(--margin-right-override);
+  margin-bottom: var(--margin-bottom-override);
+  margin-left: var(--margin-left-override);
+
+  /* Reset the overrides on direct children */
+  :where(&) > * {
+    --margin-top-override: initial;
+    --margin-right-override: initial;
+    --margin-bottom-override: initial;
+    --margin-left-override: initial;
+  }
+}
+
+@theme {
+  --font-sans:
+    "Inter", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
+    "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+
+  /* Colors */
+  /*Resets default colors*/
+  --color-*: initial;
+
+  --color-white: #fff;
+  --color-black: #000;
+
+  --color-orange-50: oklch(0.98 0.016 73.684);
+  --color-orange-100: oklch(0.954 0.038 75.164);
+  --color-orange-200: oklch(0.901 0.076 70.697);
+  --color-orange-300: oklch(0.837 0.128 66.29);
+  --color-orange-400: oklch(0.75 0.183 55.934);
+  --color-orange-500: oklch(0.705 0.213 47.604);
+  --color-orange-600: oklch(0.646 0.222 41.116);
+  --color-orange-700: oklch(0.553 0.195 38.402);
+  --color-orange-800: oklch(0.47 0.157 37.304);
+  --color-orange-900: oklch(0.408 0.123 38.172);
+  --color-orange-950: oklch(0.266 0.079 36.259);
+  --color-brand-primary: var(--color-orange-500);
+  --color-brand-primary-text: var(--color-orange-700);
+  --color-brand-primary-border: var(--color-orange-600);
+  --color-brand-primary-muted: var(--color-orange-100);
+  --color-brand-primary-subtle: var(--color-orange-200);
+  --color-brand-primary-bold: var(--color-orange-700);
+  --color-brand-primary-inverse: var(--color-white);
+
+  --color-lime-50: oklch(0.986 0.031 120.757);
+  --color-lime-100: oklch(0.967 0.067 122.328);
+  --color-lime-200: oklch(0.938 0.127 124.321);
+  --color-lime-300: oklch(0.897 0.196 126.665);
+  --color-lime-400: oklch(0.841 0.238 128.85);
+  --color-lime-500: oklch(0.768 0.233 130.85);
+  --color-lime-600: oklch(0.648 0.2 131.684);
+  --color-lime-700: oklch(0.532 0.157 131.589);
+  --color-lime-800: oklch(0.453 0.124 130.933);
+  --color-lime-900: oklch(0.405 0.101 131.063);
+  --color-lime-950: oklch(0.274 0.072 132.109);
+  --color-brand-accent: var(--color-lime-500);
+  --color-brand-accent-text: var(--color-lime-700);
+  --color-brand-accent-border: var(--color-lime-600);
+  --color-brand-accent-muted: var(--color-lime-100);
+  --color-brand-accent-subtle: var(--color-lime-200);
+  --color-brand-accent-bold: var(--color-lime-700);
+  --color-brand-accent-inverse: var(--color-lime-100);
+
+  --color-neutral-50: oklch(0.984 0.003 247.858);
+  --color-neutral-100: oklch(0.968 0.007 247.896);
+  --color-neutral-200: oklch(0.929 0.013 255.508);
+  --color-neutral-300: oklch(0.869 0.022 252.894);
+  --color-neutral-400: oklch(0.704 0.04 256.788);
+  --color-neutral-500: oklch(0.554 0.046 257.417);
+  --color-neutral-600: oklch(0.446 0.043 257.281);
+  --color-neutral-700: oklch(0.372 0.044 257.287);
+  --color-neutral-800: oklch(0.279 0.041 260.031);
+  --color-neutral-900: oklch(0.208 0.042 265.755);
+  --color-neutral-950: oklch(0.129 0.042 264.695);
+  --color-brand-neutral-border: var(--color-neutral-200);
+  --color-brand-neutral-text: var(--color-neutral-800);
+  --color-brand-neutral: var(--color-neutral-500);
+  --color-brand-neutral-muted: var(--color-neutral-100);
+  --color-brand-neutral-subtle: var(--color-neutral-300);
+  --color-brand-neutral-bold: var(--color-neutral-700);
+  --color-brand-neutral-inverse: var(--color-neutral-100);
+
+  --color-green-50: oklch(97.9% 0.021 166.113);
+  --color-green-100: oklch(97.13% 0.0406 169.37);
+  --color-green-200: oklch(91.86% 0.0665 167.18);
+  --color-green-300: oklch(84.01% 0.1126 164.78);
+  --color-green-400: oklch(76.52% 0.1403 161.99);
+  --color-green-500: oklch(70.38% 0.1481 160);
+  --color-green-600: oklch(62.68% 0.133 159.56);
+  --color-green-700: oklch(54.63% 0.1118 160.46);
+  --color-green-800: oklch(48.25% 0.0911 161.78);
+  --color-green-900: oklch(37.11% 0.0678 162.26);
+  --color-green-950: oklch(29.84% 0.0346 164.81);
+  --color-brand-success: var(--color-green-500);
+  --color-brand-success-text: var(--color-green-800);
+  --color-brand-success-border: var(--color-green-600);
+  --color-brand-success-muted: var(--color-green-50);
+  --color-brand-success-subtle: var(--color-green-200);
+  --color-brand-success-bold: var(--color-green-700);
+  --color-brand-success-inverse: var(--color-white);
+
+  --color-yellow-50: oklch(0.987 0.026 102.212);
+  --color-yellow-100: oklch(0.973 0.071 103.193);
+  --color-yellow-200: oklch(0.945 0.129 101.54);
+  --color-yellow-300: oklch(0.905 0.182 98.111);
+  --color-yellow-400: oklch(0.852 0.199 91.936);
+  --color-yellow-500: oklch(0.795 0.184 86.047);
+  --color-yellow-600: oklch(0.681 0.162 75.834);
+  --color-yellow-700: oklch(0.554 0.135 66.442);
+  --color-yellow-800: oklch(0.476 0.114 61.907);
+  --color-yellow-900: oklch(0.421 0.095 57.708);
+  --color-yellow-950: oklch(0.286 0.066 53.813);
+  --color-brand-warning: var(--color-yellow-500);
+  --color-brand-warning-text: var(--color-yellow-800);
+  --color-brand-warning-border: var(--color-yellow-600);
+  --color-brand-warning-muted: var(--color-yellow-100);
+  --color-brand-warning-subtle: var(--color-yellow-300);
+  --color-brand-warning-bold: var(--color-yellow-700);
+  --color-brand-warning-inverse: var(--color-yellow-100);
+
+  --color-red-50: oklch(0.971 0.013 17.38);
+  --color-red-100: oklch(0.936 0.032 17.717);
+  --color-red-200: oklch(0.885 0.062 18.334);
+  --color-red-300: oklch(0.808 0.114 19.571);
+  --color-red-400: oklch(0.704 0.191 22.216);
+  --color-red-500: oklch(0.637 0.237 25.331);
+  --color-red-600: oklch(0.577 0.245 27.325);
+  --color-red-700: oklch(0.505 0.213 27.518);
+  --color-red-800: oklch(0.444 0.177 26.899);
+  --color-red-900: oklch(0.396 0.141 25.723);
+  --color-red-950: oklch(0.258 0.092 26.042);
+  --color-brand-danger: var(--color-red-500);
+  --color-brand-danger-text: var(--color-red-800);
+  --color-brand-danger-border: var(--color-red-600);
+  --color-brand-danger-muted: var(--color-red-50);
+  --color-brand-danger-subtle: var(--color-red-200);
+  --color-brand-danger-bold: var(--color-red-700);
+  --color-brand-danger-inverse: var(--color-red-50);
+
+  --color-blue-50: oklch(0.977 0.013 236.62);
+  --color-blue-100: oklch(0.951 0.026 236.824);
+  --color-blue-200: oklch(0.901 0.058 230.902);
+  --color-blue-300: oklch(0.828 0.111 230.318);
+  --color-blue-400: oklch(0.746 0.16 232.661);
+  --color-blue-500: oklch(0.685 0.169 237.323);
+  --color-blue-600: oklch(0.588 0.158 241.966);
+  --color-blue-700: oklch(0.5 0.134 242.749);
+  --color-blue-800: oklch(0.443 0.11 240.79);
+  --color-blue-900: oklch(0.391 0.09 240.876);
+  --color-blue-950: oklch(0.293 0.066 243.157);
+  --color-brand-info: var(--color-blue-500);
+  --color-brand-info-text: var(--color-blue-700);
+  --color-brand-info-border: var(--color-blue-600);
+  --color-brand-info-muted: var(--color-blue-50);
+  --color-brand-info-subtle: var(--color-blue-200);
+  --color-brand-info-bold: var(--color-blue-700);
+  --color-brand-info-inverse: var(--color-white);
+
+  /* Metric */
+  --text-metric-xs: 2rem;
+  --text-metric-xs--line-height: 2.5rem;
+  --text-metric-sm: 2.25rem;
+  --text-metric-sm--line-height: 2.75rem;
+  --text-metric-md: 2.25rem;
+  --text-metric-md--line-height: 3.25rem;
+  --text-metric-lg: 3.25rem;
+  --text-metric-lg--line-height: 4rem;
+  /* Title */
+  --text-title-xs: 1.25rem;
+  --text-title-xs--line-height: 1.75rem;
+  --text-title-sm: 1.5rem;
+  --text-title-sm--line-height: 2rem;
+  --text-title-md: 1.75rem;
+  --text-title-md--line-height: 2.25rem;
+  --text-title-lg: 2rem;
+  --text-title-lg--line-height: 2.5rem;
+  --text-title-xl: 2.25rem;
+  --text-title-xl--line-height: 2.75rem;
+  --text-title-xxl: 2.5rem;
+  --text-title-xxl--line-height: 3.25rem;
+
+  /* Heading  */
+  --text-heading-xs: 2.25rem;
+  --text-heading-xs--line-height: 2.75rem;
+  --text-heading-sm: 2.75rem;
+  --text-heading-sm--line-height: 3.25rem;
+  --text-heading-md: 3.25rem;
+  --text-heading-md--line-height: 4rem;
+  --text-heading-lg: 6rem;
+  --text-heading-lg--line-height: 7rem;
+
+  /*Labels*/
+  --text-label-xs: 0.75rem;
+  --text-label-xs--line-height: 1rem;
+  --text-label-sm: 0.875rem;
+  --text-label-sm--line-height: 1rem;
+  --text-label-md: 1rem;
+  --text-label-md--line-height: 1.25rem;
+  --text-label-lg: 1.125rem;
+  --text-label-lg--line-height: 1.5rem;
+  /* Paragraph */
+  --text-paragraph-xs: 0.75rem;
+  --text-paragraph-xs--line-height: 1.25rem;
+  --text-paragraph-sm: 0.875rem;
+  --text-paragraph-sm--line-height: 1.25rem;
+  --text-paragraph-md: 1rem;
+  --text-paragraph-md--line-height: 1.5rem;
+  --text-paragraph-lg: 1.125rem;
+  --text-paragraph-lg--line-height: 1.75rem;
+
+  /* Generic Typography Colors */
+  --color-body: var(--color-neutral-950);
+  --color-body-subtle: var(--color-neutral-700);
+  --color-body-muted: var(--color-neutral-500);
+
+  /* Component Tokens */
+  --color-surface-background: var(--color-white);
+  --color-surface-foreground: var(--color-brand-neutral-text);
+  --radius-surface: var(--radius-md);
+  --spacing-surface-gap: --spacing(4);
+  --spacing-surface-gutter: --spacing(6);
+  --spacing-surface-border: 1px;
+
+  --radius-control: var(--radius-md);
+  --radius-btn: var(--radius-control);
+
+  --color-surface-border: var(--color-brand-neutral-border);
+  --color-control-border: var(--color-brand-neutral-border);
+
+  --animate-collapsible-collapse: collapsible-collapsed 0.2s ease-out;
+  --animate-collapsible-expand: collapsible-expanded 0.2s ease-out;
+
+  @keyframes collapsible-collapsed {
+    from {
+      height: var(--collapsible-height);
+    }
+    to {
+      height: 0;
+    }
+  }
+
+  @keyframes collapsible-expanded {
+    from {
+      height: 0;
+    }
+    to {
+      height: var(--collapsible-height);
+    }
+  }
+}
+
+:root {
+  --surface-padding-top: var(--spacing-surface-gutter);
+  --surface-padding-right: var(--spacing-surface-gutter);
+  --surface-padding-bottom: var(--spacing-surface-gutter);
+  --surface-padding-left: var(--spacing-surface-gutter);
+  --surface-border-width: 1px;
+
+  /* Sidebar */
+  --sidebar-gutter: --spacing(4);
+  --sidebar-width: --spacing(64);
+  --sidebar-content-gutter: 0;
+}

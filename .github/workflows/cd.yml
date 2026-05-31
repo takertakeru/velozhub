@@ -1,0 +1,89 @@
+name: CD
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: 20
+
+concurrency:
+  group: cd-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'yarn'
+          
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+        
+      - name: Type check
+        run: yarn typecheck
+        
+      - name: Run tests
+        run: yarn test --run
+        
+      - name: Build application
+        run: yarn build
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          VITE_COGNITO_USER_POOL_ID: ${{ secrets.VITE_COGNITO_USER_POOL_ID }}
+          VITE_COGNITO_USER_POOL_CLIENT_ID: ${{ secrets.VITE_COGNITO_USER_POOL_CLIENT_ID }}
+          VITE_COGNITO_IDENTITY_POOL_ID: ${{ secrets.VITE_COGNITO_IDENTITY_POOL_ID }}
+          VITE_PUBLIC_POSTHOG_KEY: ${{ secrets.VITE_PUBLIC_POSTHOG_KEY }}
+          VITE_PUBLIC_POSTHOG_HOST: ${{ secrets.VITE_PUBLIC_POSTHOG_HOST }}
+        
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+          
+      - name: Deploy to S3
+        run: |
+          aws s3 sync dist/ s3://${{ secrets.AWS_S3_BUCKET }} --delete
+          
+      - name: Invalidate CloudFront
+        run: |
+          aws cloudfront create-invalidation --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"
+          
+      - name: Wait for deployment propagation
+        run: sleep 30
+        
+      - name: Health check deployment
+        run: |
+          if [ -n "${{ secrets.PRODUCTION_URL }}" ]; then
+            echo "Running health check on ${{ secrets.PRODUCTION_URL }}"
+            curl -f "${{ secrets.PRODUCTION_URL }}" -o /dev/null -s || {
+              echo "Health check failed - deployment may have issues"
+              exit 1
+            }
+            echo "Health check passed - deployment successful"
+          else
+            echo "PRODUCTION_URL not configured, skipping health check"
+          fi
+          
+      - name: Notify deployment success
+        if: success()
+        run: |
+          echo "✅ Deployment completed successfully to production"
+          
+      - name: Notify deployment failure
+        if: failure()
+        run: |
+          echo "❌ Deployment failed - check logs and consider rollback"

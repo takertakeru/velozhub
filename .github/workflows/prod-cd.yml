@@ -1,0 +1,123 @@
+name: CD - Production Deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      env:
+        description: "Manual Deployment from infra/environments/prod"
+        required: true
+        default: prod
+        type: choice
+        options:
+          - prod
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  terraform:
+    name: Terraform Init, Validate & Apply Production Environment
+    runs-on: ubuntu-latest
+    environment: prod
+    env:
+      SUBJECT_ALTERNATIVE_NAMES: ${{ vars.SUBJECT_ALTERNATIVE_NAMES }}
+      AWS_TERRAFORM_ROLE_ARN: ${{ secrets.AWS_TERRAFORM_ROLE_ARN }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      AWS_BUCKET_TF_STATE: ${{ vars.AWS_BUCKET_TF_STATE }}
+      DYNAMODB_TABLE: ${{ vars.DYNAMODB_TABLE }}
+      AWS_BUCKET_NAME: ${{ vars.AWS_BUCKET_NAME }}
+      AWS_TAG_OWNER: ${{ vars.AWS_TAG_OWNER }}
+      PROJECT_NAME: ${{ vars.PROJECT_NAME }}
+      DOMAIN_NAME: ${{ vars.DOMAIN_NAME }}
+
+    concurrency:
+      group: "terraform-prod"
+      cancel-in-progress: true
+
+    steps:
+      - name: Checking Environment
+        if: ${{ github.ref != 'refs/heads/main' }}
+        run: |
+          echo "You can only deploy from main branch to production environment."
+          exit 1
+
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.13.1
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ env.AWS_TERRAFORM_ROLE_ARN }}
+      - name: Terraform Init
+        run: terraform init \
+          -backend-config="bucket=${{ env.AWS_BUCKET_TF_STATE }}" \
+          -backend-config="key=aboitiz_streetlight_frontend/prod/terraform.tfstate" \
+          -backend-config="region=${{ env.AWS_REGION }}" \
+          -backend-config="dynamodb_table=${{ env.DYNAMODB_TABLE }}" \
+          -backend-config="encrypt=true"
+        working-directory: infra/environments/prod
+      - name: Terraform Plan & Apply
+        run: |
+          SAN_LIST=$(echo $SUBJECT_ALTERNATIVE_NAMES | sed 's/,/","/g')
+          terraform plan -out=tfplan \
+            -var "bucket_name=${{ env.AWS_BUCKET_NAME }}" \
+            -var "aws_region=${{ env.AWS_REGION }}" \
+            -var "owner=${{ env.AWS_TAG_OWNER }}" \
+            -var "env=prod" \
+            -var "project_name=${{ env.PROJECT_NAME }}" \
+            -var "domain_name=${{ env.DOMAIN_NAME }}" \
+            -var "subject_alternative_names=[\"$SAN_LIST\"]"
+          terraform apply -auto-approve tfplan
+        working-directory: infra/environments/prod
+
+  frontend:
+    name: Build & Deploy Frontend - Production
+    runs-on: ubuntu-latest
+    needs: terraform
+    environment: staging
+    env:
+      VITE_API_URL: ${{ vars.VITE_API_URL }}
+      VITE_COGNITO_POOL_ID: ${{ vars.VITE_COGNITO_POOL_ID }}
+      VITE_COGNITO_CLIENT_ID: ${{ vars.VITE_COGNITO_CLIENT_ID }}
+      VITE_COGNITO_DOMAIN: ${{ vars.VITE_COGNITO_DOMAIN }}
+      VITE_GOOGLE_MAPS_API_KEY: ${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}
+      VITE_IS_TESTING: ${{ vars.VITE_IS_TESTING }}
+      VITE_ENABLE_FEATURE_FLAGS: ${{ vars.VITE_ENABLE_FEATURE_FLAGS }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      AWS_BUCKET_NAME: ${{ vars.AWS_BUCKET_NAME }}
+      CLOUDFRONT_DISTRIBUTION_ID: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}
+      AWS_TERRAFORM_ROLE_ARN: ${{ secrets.AWS_TERRAFORM_ROLE_ARN }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Build frontend
+        run: yarn build
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ env.AWS_TERRAFORM_ROLE_ARN }}
+
+      - name: Deploy to S3
+        run: |
+          BUCKET="${AWS_BUCKET_NAME}-staging"
+          aws s3 sync ./dist "s3://$BUCKET/" --delete
+
+      - name: Invalidate CloudFront cache
+        run: |
+          aws cloudfront create-invalidation \
+              --distribution-id $CLOUDFRONT_DISTRIBUTION_ID \
+              --paths "/*"
