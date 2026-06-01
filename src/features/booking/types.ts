@@ -1,4 +1,8 @@
-import type { Booking as BookingRow, Profile } from "@/libs/supabase/types";
+import type {
+  Booking as BookingRow,
+  Profile,
+  ProfileRole,
+} from "@/libs/supabase/types";
 import { localPartsOf } from "./time";
 
 /**
@@ -17,6 +21,7 @@ export type Person = {
   name: string;
   color: string;
   initials: string;
+  role: ProfileRole;
 };
 
 /** UI-facing booking: Manila local date + times, riders as profile ids. */
@@ -61,6 +66,7 @@ export function toPerson(profile: Profile): Person {
     name: profile.display_name,
     color: profile.color,
     initials: initialsOf(profile.display_name),
+    role: profile.role,
   };
 }
 

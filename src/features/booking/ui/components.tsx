@@ -5,12 +5,12 @@
  * helpers in `../time` and `../status`.
  */
 import type { CSSProperties } from "react";
+import { velozCarUrl } from "@/components/veloz/brand";
+import * as Ic from "@/components/veloz/icons";
 import type { DayStatus } from "../status";
 import { fmtTime } from "../time";
 import type { BookingDraft, BookingView } from "../types";
 import { personOf, useBookingUi, useMeId, usePerson } from "./context";
-import * as Ic from "./icons";
-import velozCar from "./veloz-car.png";
 
 /** A CSS custom property (--pc) carrying a person's color. */
 function pcStyle(color: string): CSSProperties {
@@ -140,8 +140,15 @@ export function AgendaItem({
 }
 
 /** The "who has the car now" hero banner shown on Home. */
-export function StatusBanner({ status }: { status: DayStatus }) {
+export function StatusBanner({
+  status,
+  onRequest,
+}: {
+  status: DayStatus;
+  onRequest?: (booking: BookingView) => void;
+}) {
   const { people } = useBookingUi();
+  const me = useMeId();
   const isFree = status.kind === "free" || status.kind === "day-free";
   const cls = isFree ? "banner is-free" : "banner is-busy";
 
@@ -153,18 +160,47 @@ export function StatusBanner({ status }: { status: DayStatus }) {
     style = pcStyle(personOf(people, status.items[0].person).color);
   }
 
+  // Someone else holds the car right now, so offer to ask for it.
+  const holder =
+    status.kind === "busy" || status.kind === "allday" ? status.booking : null;
+
   return (
     <div className={cls} style={style}>
       <div className="banner-content">
         <BannerInner status={status} />
+        {holder !== null &&
+          holder.person !== me &&
+          onRequest !== undefined && (
+            <RequestButton booking={holder} onRequest={onRequest} />
+          )}
       </div>
       <img
         className="banner-car"
-        src={velozCar}
+        src={velozCarUrl}
         alt="Toyota Veloz"
         aria-hidden="true"
       />
     </div>
+  );
+}
+
+function RequestButton({
+  booking,
+  onRequest,
+}: {
+  booking: BookingView;
+  onRequest: (booking: BookingView) => void;
+}) {
+  const p = usePerson(booking.person);
+
+  return (
+    <button
+      type="button"
+      className="btn-request"
+      onClick={() => { onRequest(booking); }}
+    >
+      <Ic.Bell /> Ask {p.name} for the car
+    </button>
   );
 }
 

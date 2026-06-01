@@ -26,24 +26,38 @@ export default defineConfig({
     VitePWA({
       // Auto-update the service worker in the background; no update prompt UI.
       registerType: "autoUpdate",
-      includeAssets: ["favicon.ico", "robots.txt", "logo192.png", "logo512.png"],
+      includeAssets: [
+        "favicon.ico",
+        "robots.txt",
+        "veloz-icon.svg",
+        "logo192.png",
+        "logo512.png",
+      ],
       manifest: {
         name: "VelozHub",
         short_name: "VelozHub",
         description: "Shared-car booking for the household Toyota Veloz.",
         theme_color: "#16a34a",
-        background_color: "#ffffff",
+        background_color: "#0e1420",
         display: "standalone",
         start_url: "/",
         icons: [
-          { src: "logo192.png", sizes: "192x192", type: "image/png" },
-          { src: "logo512.png", sizes: "512x512", type: "image/png" },
+          // Branded Veloz mark. SVG covers Chrome/Edge/Firefox/Android (incl.
+          // maskable); the PNG stays as a fallback for platforms without SVG
+          // manifest-icon support (notably older iOS).
           {
-            src: "logo512.png",
-            sizes: "512x512",
-            type: "image/png",
-            purpose: "any maskable",
+            src: "veloz-icon.svg",
+            sizes: "any",
+            type: "image/svg+xml",
+            purpose: "any",
           },
+          {
+            src: "veloz-icon.svg",
+            sizes: "any",
+            type: "image/svg+xml",
+            purpose: "maskable",
+          },
+          { src: "logo512.png", sizes: "512x512", type: "image/png" },
         ],
       },
       workbox: {

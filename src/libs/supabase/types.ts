@@ -53,6 +53,17 @@ export type BookingRider = {
   profile_id: string;
 };
 
+export type Nudge = {
+  id: string;
+  household_id: string;
+  booking_id: string | null;
+  from_user: string;
+  to_user: string;
+  message: string | null;
+  seen: boolean;
+  created_at: string;
+};
+
 type TableShape<Row, Insert, Update> = {
   Row: Row;
   Insert: Insert;
@@ -89,6 +100,15 @@ export type Database = {
         Partial<Booking>
       >;
       booking_riders: TableShape<BookingRider, BookingRider, Partial<BookingRider>>;
+      nudges: TableShape<
+        Nudge,
+        Omit<Nudge, "id" | "created_at" | "seen"> & {
+          id?: string;
+          created_at?: string;
+          seen?: boolean;
+        },
+        Partial<Nudge>
+      >;
     };
     Views: Record<string, never>;
     Functions: {

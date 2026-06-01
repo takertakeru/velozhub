@@ -11,29 +11,41 @@
  * drive the layout, and a ResizeObserver flips the `wide` flag that swaps the
  * phone and desktop component trees for Home and Week.
  */
-import "./veloz.css";
-import { useEffect, useMemo, useRef, useState } from "react";
+import "@/components/veloz/veloz.css";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { toaster } from "@/components/ui/toast";
+import { VelozMark } from "@/components/veloz/brand";
+import * as Ic from "@/components/veloz/icons";
+import type { Nudge } from "@/libs/supabase/types";
+import { bookingsToICS, downloadICS } from "../ics";
 import {
   useCancelBooking,
   useCreateBooking,
   useUpdateBooking,
 } from "../mutations";
-import { useBookings, useMe, useProfiles, useVehicle } from "../queries";
+import { useNudgeInbox, useSendNudge } from "../nudges";
+import {
+  type PeopleData,
+  useBookings,
+  useMe,
+  useProfiles,
+  useVehicle,
+} from "../queries";
 import { useBookingsRealtime } from "../realtime";
 import { todayManilaISO } from "../time";
 import type { BookingDraft, BookingView } from "../types";
 import { Avatar } from "./components";
 import { BookingUiProvider, personOf, useBookingUi } from "./context";
-import * as Ic from "./icons";
 import {
   BookingForm,
   DetailSheet,
   HomeScreen,
+  StatsScreen,
   WeekScreen,
 } from "./screens";
 
-type Screen = "home" | "week";
+type Screen = "home" | "week" | "stats";
 type FormState = { mode: "new" } | { mode: "edit"; id: string } | null;
 type Theme = "light" | "dark";
 
@@ -105,6 +117,118 @@ function Centered({ children }: { children: React.ReactNode }) {
   );
 }
 
+/**
+ * Avatar-triggered account menu: identity, theme toggle, and sign out. Used in
+ * two spots, with `placement` flipping which way the popover opens: "up" from
+ * the desktop sidebar footer, "down" from the phone top bar avatar. Sign out
+ * routes to `/logout`, which clears the session + query cache and redirects.
+ */
+function AccountMenu({
+  me,
+  people,
+  theme,
+  onToggleTheme,
+  onExportCalendar,
+  placement,
+}: {
+  me: string;
+  people: PeopleData;
+  theme: Theme;
+  onToggleTheme: () => void;
+  onExportCalendar: () => void;
+  placement: "up" | "down";
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const navigate = useNavigate();
+  const person = personOf(people, me);
+  const close = () => { setIsOpen(false); };
+
+  return (
+    // eslint-disable-next-line jsx-a11y/no-static-element-interactions
+    <div
+      className={`acct ${placement}`}
+      onKeyDown={(e) => { if (e.key === "Escape") { close(); } }}
+    >
+      {placement === "down" ? (
+        <button
+          type="button"
+          className="acct-trigger bare"
+          aria-label="Account menu"
+          aria-haspopup="menu"
+          aria-expanded={isOpen}
+          onClick={() => { setIsOpen((o) => !o); }}
+        >
+          <Avatar pid={me} />
+        </button>
+      ) : (
+        <button
+          type="button"
+          className="acct-trigger"
+          aria-haspopup="menu"
+          aria-expanded={isOpen}
+          onClick={() => { setIsOpen((o) => !o); }}
+        >
+          <Avatar pid={me} />
+          <div>
+            <div className="nm">{person.name}</div>
+            <div className="rl">Signed in</div>
+          </div>
+          <span className="caret">
+            <Ic.Chevron />
+          </span>
+        </button>
+      )}
+
+      {isOpen && (
+        <>
+          <button
+            type="button"
+            className="acct-backdrop"
+            aria-hidden="true"
+            tabIndex={-1}
+            onClick={close}
+          />
+          <div className="acct-pop" role="menu">
+            <div className="acct-head">
+            <Avatar pid={me} />
+            <div>
+              <div className="nm">{person.name}</div>
+              <div className="rl">Signed in on this device</div>
+            </div>
+          </div>
+          <div className="acct-sep" />
+          <button
+            type="button"
+            className="acct-item"
+            role="menuitem"
+            onClick={onToggleTheme}
+          >
+            {theme === "dark" ? <Ic.Sun /> : <Ic.Moon />}
+            {theme === "dark" ? "Light mode" : "Dark mode"}
+          </button>
+          <button
+            type="button"
+            className="acct-item"
+            role="menuitem"
+            onClick={() => { onExportCalendar(); close(); }}
+          >
+            <Ic.Calendar /> Add to calendar
+          </button>
+          <button
+            type="button"
+            className="acct-item danger"
+            role="menuitem"
+            onClick={() => { void navigate({ to: "/logout" }); }}
+          >
+            <Ic.LogOut /> Sign out
+          </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 function Shell({
   me,
   vehicleId,
@@ -129,6 +253,17 @@ function Shell({
   const createM = useCreateBooking();
   const updateM = useUpdateBooking();
   const cancelM = useCancelBooking();
+  const sendNudgeM = useSendNudge();
+
+  // Live in-app notification when someone asks you for the car.
+  const onNudge = useCallback(
+    (n: Nudge) => {
+      toaster(`${personOf(people, n.from_user).name} is asking for the car.`);
+    },
+    [people],
+  );
+
+  useNudgeInbox(me, onNudge);
 
   // Width-driven layout swap (container queries handle the CSS; this flips the
   // phone/desktop component trees for Home and Week).
@@ -222,10 +357,49 @@ function Shell({
   const navItems: Array<{ id: Screen; label: string; icon: typeof Ic.Home }> = [
     { id: "home", label: "Home", icon: Ic.Home },
     { id: "week", label: "Week", icon: Ic.Calendar },
+    { id: "stats", label: "Usage", icon: Ic.Chart },
   ];
 
   const toggleTheme = () =>
     { setTheme((t) => (t === "dark" ? "light" : "dark")); };
+
+  const exportCalendar = () => {
+    downloadICS("velozhub.ics", bookingsToICS(bookings, people));
+  };
+
+  const requestCar = (booking: BookingView) => {
+    sendNudgeM.mutate(
+      {
+        householdId,
+        fromUser: me,
+        toUser: booking.person,
+        bookingId: booking.id,
+      },
+      {
+        onSuccess: () => {
+          toaster(`Asked ${personOf(people, booking.person).name} for the car.`);
+        },
+        onError: (err) => { notifyError(err, "Could not send the request."); },
+      },
+    );
+  };
+
+  let screenView = (
+    <HomeScreen
+      bookings={bookings}
+      wide={isWide}
+      onOpen={setDetailId}
+      onRequest={requestCar}
+    />
+  );
+
+  if (screen === "week") {
+    screenView = (
+      <WeekScreen bookings={bookings} wide={isWide} onOpen={setDetailId} />
+    );
+  } else if (screen === "stats") {
+    screenView = <StatsScreen bookings={bookings} />;
+  }
 
   return (
     <div className="veloz" data-theme={theme} ref={rootRef}>
@@ -233,7 +407,7 @@ function Shell({
         {/* Desktop sidebar */}
         <aside className="sidebar">
           <div className="brand">
-            <Ic.Mark className="mark" /> VelozHub
+            <VelozMark className="mark" /> VelozHub
           </div>
           {navItems.map((n) => 
             { return <button
@@ -247,47 +421,43 @@ function Shell({
           <button className="btn btn-primary new-btn" onClick={openNew}>
             <Ic.Plus /> New booking
           </button>
-          <div className="me">
-            <Avatar pid={me} />
-            <div>
-              <div className="nm">{personOf(people, me).name}</div>
-              <div className="rl">Signed in · this device</div>
-            </div>
-            <button
-              className="icon-btn"
-              style={{ marginLeft: "auto" }}
-              aria-label="Toggle theme"
-              onClick={toggleTheme}
-            >
-              {theme === "dark" ? <Ic.Sun /> : <Ic.Moon />}
-            </button>
-          </div>
+          <AccountMenu
+            me={me}
+            people={people}
+            theme={theme}
+            placement="up"
+            onToggleTheme={toggleTheme}
+            onExportCalendar={exportCalendar}
+          />
         </aside>
 
         <div className="main">
           {/* Phone top bar */}
           <div className="topbar">
             <div className="brand">
-              <Ic.Mark className="mark" /> VelozHub
+              <VelozMark className="mark" /> VelozHub
             </div>
             <div className="spacer" />
             <button
-              className="icon-btn"
-              aria-label="Toggle theme"
-              onClick={toggleTheme}
+              type="button"
+              className={screen === "stats" ? "icon-btn active" : "icon-btn"}
+              aria-label="Usage"
+              aria-pressed={screen === "stats"}
+              onClick={() => { setScreen("stats"); }}
             >
-              {theme === "dark" ? <Ic.Sun /> : <Ic.Moon />}
+              <Ic.Chart />
             </button>
-            <Avatar pid={me} />
+            <AccountMenu
+              me={me}
+              people={people}
+              theme={theme}
+              placement="down"
+              onToggleTheme={toggleTheme}
+              onExportCalendar={exportCalendar}
+            />
           </div>
 
-          <div className="scrollarea">
-            {screen === "home" ? (
-              <HomeScreen bookings={bookings} wide={isWide} onOpen={setDetailId} />
-            ) : (
-              <WeekScreen bookings={bookings} wide={isWide} onOpen={setDetailId} />
-            )}
-          </div>
+          <div className="scrollarea">{screenView}</div>
 
           {/* Phone tab bar */}
           <nav className="tabbar">

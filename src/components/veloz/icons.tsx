@@ -1,7 +1,7 @@
 /**
  * VelozHub line icons, ported from the design prototype (`veloz-icons.jsx`).
- * Stroke-based, 24x24, inherit currentColor. The brand Mark uses the themed
- * --primary / --accent tokens from veloz.css.
+ * Stroke-based, 24x24, inherit currentColor. The brand mark lives separately in
+ * `@/components/veloz/brand` since it is used outside the booking feature too.
  */
 import type { SVGProps } from "react";
 
@@ -170,25 +170,42 @@ export function Lock(props: IconProps) {
   );
 }
 
-/** Brand mark, a stylized speed "V" inside a rounded square. */
-export function Mark(props: IconProps) {
+export function LogOut(props: IconProps) {
   return (
-    <svg viewBox="0 0 32 32" fill="none" {...props}>
-      <rect x={1} y={1} width={30} height={30} rx={9} fill="var(--primary)" />
-      <path
-        d="M9 10.5l4.6 11a1.2 1.2 0 0 0 2.2 0l4.6-11"
-        stroke="var(--primary-ink)"
-        strokeWidth={2.6}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
-      <path
-        d="M21.5 10.5h2.2"
-        stroke="var(--accent)"
-        strokeWidth={2.6}
-        strokeLinecap="round"
-      />
-    </svg>
+    <Stroke {...props}>
+      <path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3" />
+      <path d="M10 17l5-5-5-5" />
+      <path d="M15 12H3" />
+    </Stroke>
   );
 }
+
+export function Clock(props: IconProps) {
+  return (
+    <Stroke {...props}>
+      <circle cx={12} cy={12} r={8.2} />
+      <path d="M12 7.5V12l3 2" />
+    </Stroke>
+  );
+}
+
+export function Chart(props: IconProps) {
+  return (
+    <Stroke {...props}>
+      <path d="M4 20h16" />
+      <path d="M7 20v-6" />
+      <path d="M12 20v-10" />
+      <path d="M17 20v-4" />
+    </Stroke>
+  );
+}
+
+export function Bell(props: IconProps) {
+  return (
+    <Stroke {...props}>
+      <path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6" />
+      <path d="M10.5 20a1.5 1.5 0 0 0 3 0" />
+    </Stroke>
+  );
+}
+

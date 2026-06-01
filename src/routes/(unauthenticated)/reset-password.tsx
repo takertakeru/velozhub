@@ -1,178 +1,164 @@
+import "@/components/veloz/veloz.css";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { AuthLayout } from "@/components/layouts/auth-layout";
-import { Banner } from "@/components/ui/banner";
-import { Button } from "@/components/ui/button";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import {
-  Description,
-  FieldControl,
-  FieldGroup,
-  Label,
-} from "@/components/ui/fieldset";
-import { InputField, PasswordInput } from "@/components/ui/input";
-import { Stepper, useStep } from "@/components/ui/stepper";
-import { Strong, Text, TextLink, Title } from "@/components/ui/text";
-import { Content } from "@/components/ui/view";
-import { buildPasswordSchema } from "@/features/auth/password-schema";
+  initialVelozTheme,
+  VelozMark,
+  type VelozTheme,
+} from "@/components/veloz/brand";
+import * as Ic from "@/components/veloz/icons";
 import { authProvider } from "@/features/auth/provider";
 import { getErrorMessage } from "@/libs/query/query-error";
 
-function buildChangePasswordSchema() {
-  return z
-    .object({
-      code: z.string().min(1, "Required"),
-      newPassword: buildPasswordSchema(),
-      confirmNewPassword: z.string(),
-    })
-    .refine((v) => v.newPassword === v.confirmNewPassword, {
-      message: "Passwords don't match",
-      path: ["confirmNewPassword"],
-    });
-}
-
+/**
+ * Password reset, Veloz-styled.
+ *
+ * Supabase sends a recovery **link** (not a code), so this is a single screen:
+ * enter your email, we send the link, and you set a new password after clicking
+ * it (the recovery session opens automatically via `detectSessionInUrl`).
+ */
 export const Route = createFileRoute("/(unauthenticated)/reset-password")({
   component: RouteComponent,
-  loader: () => ({ changePasswordSchema: buildChangePasswordSchema() }),
 });
 
+const schema = z.object({ email: z.email("Enter a valid email address.") });
+
+type FormData = z.infer<typeof schema>;
+
 function RouteComponent() {
-  const [email, setEmail] = useState("");
-
-  return (
-    <AuthLayout>
-      <Stepper>
-        <ResetPasswordForm onSent={setEmail} />
-        <ChangePasswordForm email={email} />
-      </Stepper>
-    </AuthLayout>
-  );
-}
-
-function ResetPasswordForm({ onSent }: { onSent: (email: string) => void }) {
-  const step = useStep();
-  const form = useForm({
+  const [theme, setTheme] = useState<VelozTheme>(initialVelozTheme);
+  const [sentTo, setSentTo] = useState<string | null>(null);
+  const form = useForm<FormData>({
     defaultValues: { email: "" },
-    resolver: zodResolver(z.object({ email: z.email() })),
+    resolver: zodResolver(schema),
   });
 
-  const onSubmitHandler = form.handleSubmit(async (data) => {
+  const onSubmit = form.handleSubmit(async (data) => {
     try {
       await authProvider.resetPassword(data.email);
-      onSent(data.email);
-      step.nextStep();
+      setSentTo(data.email);
     } catch (error) {
       form.setError("root", { message: getErrorMessage(error) });
     }
   });
+
   const rootError = form.formState.errors.root?.message;
+  const emailError = form.formState.errors.email?.message;
+  const isLoading = form.formState.isSubmitting;
+
+  const toggleTheme = () => {
+    setTheme((t) => (t === "dark" ? "light" : "dark"));
+  };
 
   return (
-    <form
-      className="grid w-full max-w-sm grid-cols-1 gap-8"
-      onSubmit={onSubmitHandler}
-    >
-      {rootError !== undefined && (
-        <Banner>
-          <Content>
-            <Label>Reset Password Error</Label>
-            <Description>{rootError}</Description>
-          </Content>
-        </Banner>
-      )}
+    <div className="veloz surface" data-theme={theme}>
+      <div className="auth-shell">
+        {sentTo ? (
+          <div className="auth-card">
+            <AuthTop theme={theme} onToggleTheme={toggleTheme} />
+            <h1 className="auth-title">Check your inbox</h1>
+            <p className="auth-sub">
+              We sent a password reset link to <b>{sentTo}</b>. Open it on this
+              device to set a new password.
+            </p>
+            <Link to="/login" className="btn btn-primary btn-block">
+              Back to sign in
+            </Link>
+          </div>
+        ) : (
+          <form className="auth-card" onSubmit={onSubmit}>
+            <AuthTop theme={theme} onToggleTheme={toggleTheme} />
+            <h1 className="auth-title">Reset password</h1>
+            <p className="auth-sub">
+              Enter your email and we&apos;ll send a link to reset it.
+            </p>
 
-      <div>
-        <Title>Reset Password</Title>
-        <Description>
-          Enter your email address and we&apos;ll send you a code to reset your
-          password.
-        </Description>
+            {rootError && (
+              <div className="warn" style={{ marginBottom: "var(--s5)" }}>
+                <Ic.Alert />
+                <div>
+                  <div className="w-title">Could not send the link</div>
+                  <div className="w-body">{rootError}</div>
+                </div>
+              </div>
+            )}
+
+            <div className="field" style={{ marginTop: 0 }}>
+              <label htmlFor="reset-email">Email</label>
+              <input
+                id="reset-email"
+                type="email"
+                className="input"
+                autoComplete="email"
+                placeholder="you@example.com"
+                {...form.register("email")}
+              />
+              {emailError && (
+                <div
+                  style={{
+                    color: "var(--danger)",
+                    fontSize: "var(--fs-sm)",
+                    fontWeight: 600,
+                    marginTop: "var(--s2)",
+                  }}
+                >
+                  {emailError}
+                </div>
+              )}
+            </div>
+
+            <button
+              type="submit"
+              className="btn btn-primary btn-block"
+              disabled={isLoading}
+              style={{ opacity: isLoading ? 0.6 : 1, marginTop: "var(--s6)" }}
+            >
+              {isLoading ? "Sending…" : "Send reset link"}
+            </button>
+
+            <p
+              style={{
+                textAlign: "center",
+                marginTop: "var(--s5)",
+                fontSize: "var(--fs-sm)",
+                color: "var(--ink-2)",
+              }}
+            >
+              Remembered it?{" "}
+              <Link to="/login" style={{ fontWeight: 700, color: "var(--ink)" }}>
+                Sign in
+              </Link>
+            </p>
+          </form>
+        )}
       </div>
-      <InputField
-        type="email"
-        control={form.control}
-        field="email"
-        label="Email"
-        name="email"
-      />
-      <Button
-        type="submit"
-        className="w-full"
-        isPending={form.formState.isSubmitting}
-      >
-        Send Code
-      </Button>
-      <Text className="text-center">
-        Return to{" "}
-        <TextLink to="/login">
-          <Strong>Login</Strong>
-        </TextLink>
-      </Text>
-    </form>
+    </div>
   );
 }
 
-function ChangePasswordForm({ email }: { email: string }) {
-  const { changePasswordSchema } = Route.useLoaderData();
-  const navigate = useNavigate();
-  const form = useForm({
-    defaultValues: { code: "", newPassword: "", confirmNewPassword: "" },
-    resolver: zodResolver(changePasswordSchema),
-  });
-
-  const onSubmitHandler = form.handleSubmit(async (data) => {
-    try {
-      await authProvider.confirmResetPassword({
-        username: email,
-        code: data.code,
-        newPassword: data.newPassword,
-      });
-      void navigate({ to: "/login" });
-    } catch (error) {
-      form.setError("root", { message: getErrorMessage(error) });
-    }
-  });
-
-  const rootError = form.formState.errors.root?.message;
-
+function AuthTop({
+  theme,
+  onToggleTheme,
+}: {
+  theme: VelozTheme;
+  onToggleTheme: () => void;
+}) {
   return (
-    <form
-      className="grid w-full max-w-sm grid-cols-1 gap-8"
-      onSubmit={onSubmitHandler}
-    >
-      <Title>Update your password</Title>
-      {rootError !== undefined && (
-        <Banner>
-          <Content>
-            <Label>Reset Password Error</Label>
-            <Description>{rootError}</Description>
-          </Content>
-        </Banner>
-      )}
-      <FieldGroup>
-        <InputField
-          control={form.control}
-          field="code"
-          label="Verification Code"
-        />
-        <FieldControl control={form.control} field="newPassword">
-          <Label>New Password</Label>
-          <PasswordInput />
-        </FieldControl>
-        <FieldControl control={form.control} field="confirmNewPassword">
-          <Label>Confirm New Password</Label>
-          <PasswordInput />
-        </FieldControl>
-      </FieldGroup>
-      <Button
-        type="submit"
-        className="w-full"
-        isPending={form.formState.isSubmitting}
+    <div className="auth-top">
+      <div className="brandrow">
+        <VelozMark className="mark" /> VelozHub
+      </div>
+      <button
+        type="button"
+        className="icon-btn"
+        aria-label="Toggle theme"
+        onClick={onToggleTheme}
       >
-        Update Password
-      </Button>
-    </form>
+        {theme === "dark" ? <Ic.Sun /> : <Ic.Moon />}
+      </button>
+    </div>
   );
 }

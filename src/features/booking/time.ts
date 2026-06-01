@@ -84,6 +84,11 @@ export function minsOf(hhmm: string): number {
   return h * 60 + m;
 }
 
+/** Inverse of `minsOf`: minutes since midnight back to an "HH:mm" string. */
+export function hhmmOfMins(mins: number): string {
+  return `${pad(Math.floor(mins / 60))}:${pad(mins % 60)}`;
+}
+
 /* ---------- "Now" in Manila ---------- */
 
 /** Today's date in Manila as "yyyy-MM-dd". */
