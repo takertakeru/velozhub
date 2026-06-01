@@ -35,12 +35,31 @@ export function VelozMark(props: SVGProps<SVGSVGElement>) {
 
 export type VelozTheme = "light" | "dark";
 
+const THEME_KEY = "veloz-theme";
+
+function readStoredTheme(): VelozTheme | null {
+  try {
+    const value = localStorage.getItem(THEME_KEY);
+
+    return value === "dark" || value === "light" ? value : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
- * Initial theme for a Veloz surface. Follows the document's `.dark` class if the
- * app has set one, otherwise the OS preference, defaulting to light. This is a
- * client-only SPA, so `document` and `window` are always available.
+ * Initial theme for a Veloz surface, shared across login, the landing, and the
+ * app so the look stays consistent through sign-in and sign-out. Prefers a
+ * previously chosen theme (localStorage), then the document `.dark` class, then
+ * the OS preference, defaulting to light. Client-only SPA, so `document` and
+ * `window` are always available.
  */
 export function initialVelozTheme(): VelozTheme {
+  const stored = readStoredTheme();
+
+  if (stored) {
+    return stored;
+  }
   if (document.documentElement.classList.contains("dark")) {
     return "dark";
   }
@@ -48,4 +67,13 @@ export function initialVelozTheme(): VelozTheme {
   return window.matchMedia("(prefers-color-scheme: dark)").matches
     ? "dark"
     : "light";
+}
+
+/** Remember the user's theme choice so every Veloz surface agrees on it. */
+export function persistVelozTheme(theme: VelozTheme): void {
+  try {
+    localStorage.setItem(THEME_KEY, theme);
+  } catch {
+    return;
+  }
 }

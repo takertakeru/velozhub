@@ -7,7 +7,7 @@
 import type { CSSProperties } from "react";
 import { velozCarUrl } from "@/components/veloz/brand";
 import * as Ic from "@/components/veloz/icons";
-import type { DayStatus } from "../status";
+import { type BookingProgress, bookingProgress, type DayStatus } from "../status";
 import { fmtTime } from "../time";
 import type { BookingDraft, BookingView } from "../types";
 import { personOf, useBookingUi, useMeId, usePerson } from "./context";
@@ -96,13 +96,29 @@ function RiderSummary({ riders }: { riders: Array<string> }) {
   );
 }
 
+const progressLabel: Record<BookingProgress, string> = {
+  done: "Done",
+  ongoing: "Ongoing",
+  upcoming: "Upcoming",
+};
+
+/** Done / Ongoing / Upcoming pill, driven by the live clock. */
+function StatusPill({ progress }: { progress: BookingProgress }) {
+  return (
+    <span className={`status-pill sp-${progress}`}>{progressLabel[progress]}</span>
+  );
+}
+
 /** A tappable booking row used across the agendas. */
 export function AgendaItem({
   b,
   onOpen,
+  showStatus = false,
 }: {
   b: BookingView;
   onOpen: (id: string) => void;
+  /** Show the live Done/Ongoing/Upcoming pill (used on the Today list). */
+  showStatus?: boolean;
 }) {
   const p = usePerson(b.person);
   const isMe = b.person === useMeId();
@@ -132,8 +148,11 @@ export function AgendaItem({
         <RiderSummary riders={b.riders} />
         {b.note && <span className="note">{b.note}</span>}
       </span>
-      <span className="chev">
-        <Ic.Chevron />
+      <span className="agenda-end">
+        {showStatus && <StatusPill progress={bookingProgress(b)} />}
+        <span className="chev">
+          <Ic.Chevron />
+        </span>
       </span>
     </button>
   );

@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   initialVelozTheme,
+  persistVelozTheme,
   VelozMark,
   type VelozTheme,
 } from "@/components/veloz/brand";
@@ -50,7 +51,13 @@ function RouteComponent() {
   const isLoading = form.formState.isSubmitting;
 
   const toggleTheme = () => {
-    setTheme((t) => (t === "dark" ? "light" : "dark"));
+    setTheme((t) => {
+      const next = t === "dark" ? "light" : "dark";
+
+      persistVelozTheme(next);
+
+      return next;
+    });
   };
 
   return (

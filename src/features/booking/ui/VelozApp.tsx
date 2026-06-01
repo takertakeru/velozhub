@@ -15,7 +15,11 @@ import "@/components/veloz/veloz.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { toaster } from "@/components/ui/toast";
-import { VelozMark } from "@/components/veloz/brand";
+import {
+  initialVelozTheme,
+  persistVelozTheme,
+  VelozMark,
+} from "@/components/veloz/brand";
 import * as Ic from "@/components/veloz/icons";
 import type { Nudge } from "@/libs/supabase/types";
 import { bookingsToICS, downloadICS } from "../ics";
@@ -243,9 +247,7 @@ function Shell({
   const { people } = useBookingUi();
   const rootRef = useRef<HTMLDivElement>(null);
   const [isWide, setIsWide] = useState(false);
-  const [theme, setTheme] = useState<Theme>(() =>
-    document.documentElement.classList.contains("dark") ? "dark" : "light",
-  );
+  const [theme, setTheme] = useState<Theme>(initialVelozTheme);
   const [screen, setScreen] = useState<Screen>("home");
   const [detailId, setDetailId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(null);
@@ -360,8 +362,15 @@ function Shell({
     { id: "stats", label: "Usage", icon: Ic.Chart },
   ];
 
-  const toggleTheme = () =>
-    { setTheme((t) => (t === "dark" ? "light" : "dark")); };
+  const toggleTheme = () => {
+    setTheme((t) => {
+      const next = t === "dark" ? "light" : "dark";
+
+      persistVelozTheme(next);
+
+      return next;
+    });
+  };
 
   const exportCalendar = () => {
     downloadICS("velozhub.ics", bookingsToICS(bookings, people));
@@ -406,9 +415,14 @@ function Shell({
       <div className="app-frame">
         {/* Desktop sidebar */}
         <aside className="sidebar">
-          <div className="brand">
+          <button
+            type="button"
+            className="brand"
+            aria-label="Go to home"
+            onClick={() => { setScreen("home"); }}
+          >
             <VelozMark className="mark" /> VelozHub
-          </div>
+          </button>
           {navItems.map((n) => 
             { return <button
               key={n.id}
@@ -434,9 +448,14 @@ function Shell({
         <div className="main">
           {/* Phone top bar */}
           <div className="topbar">
-            <div className="brand">
+            <button
+              type="button"
+              className="brand"
+              aria-label="Go to home"
+              onClick={() => { setScreen("home"); }}
+            >
               <VelozMark className="mark" /> VelozHub
-            </div>
+            </button>
             <div className="spacer" />
             <button
               type="button"

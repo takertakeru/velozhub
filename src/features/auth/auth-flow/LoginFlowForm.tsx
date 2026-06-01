@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "@tanstack/react-router";
 import {
   initialVelozTheme,
+  persistVelozTheme,
   VelozMark,
   type VelozTheme,
 } from "@/components/veloz/brand";
@@ -95,7 +96,13 @@ export function LoginFlowForm() {
               className="icon-btn"
               aria-label="Toggle theme"
               onClick={() => {
-                setTheme((t) => (t === "dark" ? "light" : "dark"));
+                setTheme((t) => {
+                  const next = t === "dark" ? "light" : "dark";
+
+                  persistVelozTheme(next);
+
+                  return next;
+                });
               }}
             >
               {theme === "dark" ? <Ic.Sun /> : <Ic.Moon />}

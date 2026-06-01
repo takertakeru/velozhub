@@ -53,6 +53,18 @@ function dayCellClass(active: boolean, isToday: boolean): string {
     .join(" ");
 }
 
+/** Human duration like "2h 30m" / "45m" / "3h". */
+function fmtDuration(mins: number): string {
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+
+  if (h > 0 && m > 0) {
+    return `${h}h ${m}m`;
+  }
+
+  return h > 0 ? `${h}h` : `${m}m`;
+}
+
 /** Seven ISO dates for the week containing `anchorIso` (Monday start). */
 function weekDays(anchorIso: string, mondayStart = true): Array<string> {
   const dow = dowOf(anchorIso);
@@ -138,9 +150,9 @@ export function HomeScreen({
   const todayList =
     todayItems.length > 0 ? (
       <ul className="agenda">
-        {todayItems.map((b) => 
+        {todayItems.map((b) =>
           { return <li key={b.id}>
-            <AgendaItem b={b} onOpen={onOpen} />
+            <AgendaItem showStatus b={b} onOpen={onOpen} />
           </li> }
         )}
       </ul>
@@ -397,6 +409,11 @@ export function BookingForm({
     }); };
   const isEditing = Boolean(initial.id);
   const canSave = valid.ok && !saving;
+  const durationMins =
+    !draft.allDay && draft.start && draft.end
+      ? minsOf(draft.end) - minsOf(draft.start)
+      : 0;
+  const durationLabel = durationMins > 0 ? fmtDuration(durationMins) : null;
 
   return (
     // eslint-disable-next-line jsx-a11y/no-static-element-interactions
@@ -409,7 +426,14 @@ export function BookingForm({
       <div className="sheet" role="dialog" aria-modal="true">
         <div className="grabber" />
         <div className="sheet-head">
-          <h2>{isEditing ? "Edit booking" : "New booking"}</h2>
+          <div className="sheet-title">
+            <h2>{isEditing ? "Edit booking" : "New booking"}</h2>
+            <p>
+              {isEditing
+                ? "Update your trip on the Veloz."
+                : "Reserve the family Veloz."}
+            </p>
+          </div>
           <button className="icon-btn" aria-label="Close" onClick={onClose}>
             <Ic.Close />
           </button>
@@ -417,20 +441,25 @@ export function BookingForm({
         <div className="sheet-body">
           <div className="field">
             <label htmlFor="bk-date">Date</label>
-            <input
-              id="bk-date"
-              type="date"
-              className="input tnum"
-              value={draft.date}
-              min={todayManilaISO()}
-              onChange={(e) => { set({ date: e.target.value }); }}
-            />
+            <div className="input-wrap">
+              <Ic.Calendar />
+              <input
+                id="bk-date"
+                type="date"
+                className="input has-icon tnum"
+                value={draft.date}
+                min={todayManilaISO()}
+                onChange={(e) => { set({ date: e.target.value }); }}
+              />
+            </div>
           </div>
 
           <div className="field">
             <div className="toggle-row">
               <div className="tl">
-                <b>All day</b>
+                <b>
+                  <Ic.Sun /> All day
+                </b>
                 <span>Blocks the whole day for everyone</span>
               </div>
               <Switch
@@ -442,25 +471,39 @@ export function BookingForm({
 
           {!draft.allDay && (
             <div className="field">
-              <label htmlFor="bk-start">Time</label>
+              <label htmlFor="bk-start">
+                Time
+                {durationLabel && (
+                  <span className="faint" style={{ fontWeight: 500 }}>
+                    {" "}
+                    · {durationLabel}
+                  </span>
+                )}
+              </label>
               <div className="time-row">
-                <input
-                  id="bk-start"
-                  type="time"
-                  className="input tnum"
-                  value={draft.start}
-                  step={900}
-                  aria-label="Start time"
-                  onChange={(e) => { set({ start: e.target.value }); }}
-                />
-                <input
-                  type="time"
-                  className="input tnum"
-                  value={draft.end}
-                  step={900}
-                  aria-label="End time"
-                  onChange={(e) => { set({ end: e.target.value }); }}
-                />
+                <div className="input-wrap">
+                  <Ic.Clock />
+                  <input
+                    id="bk-start"
+                    type="time"
+                    className="input has-icon tnum"
+                    value={draft.start}
+                    step={900}
+                    aria-label="Start time"
+                    onChange={(e) => { set({ start: e.target.value }); }}
+                  />
+                </div>
+                <div className="input-wrap">
+                  <Ic.Clock />
+                  <input
+                    type="time"
+                    className="input has-icon tnum"
+                    value={draft.end}
+                    step={900}
+                    aria-label="End time"
+                    onChange={(e) => { set({ end: e.target.value }); }}
+                  />
+                </div>
               </div>
             </div>
           )}

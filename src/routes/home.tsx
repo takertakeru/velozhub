@@ -3,6 +3,7 @@ import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   initialVelozTheme,
+  persistVelozTheme,
   velozCarUrl,
   VelozMark,
   type VelozTheme,
@@ -47,7 +48,13 @@ function RouteComponent() {
             className="icon-btn"
             aria-label="Toggle theme"
             onClick={() => {
-              setTheme((t) => (t === "dark" ? "light" : "dark"));
+              setTheme((t) => {
+                const next = t === "dark" ? "light" : "dark";
+
+                persistVelozTheme(next);
+
+                return next;
+              });
             }}
           >
             {theme === "dark" ? <Ic.Sun /> : <Ic.Moon />}
@@ -64,8 +71,8 @@ function RouteComponent() {
               <h1>One Veloz. Five drivers. Zero double-bookings.</h1>
               <p className="lead">
                 VelozHub is the shared calendar for your family&apos;s Toyota
-                Veloz. See who has the car right now, book your slot in seconds,
-                and never argue over a clash again.
+                Veloz. See who has the car right now and book your slot in
+                seconds.
               </p>
               <div className="hero-cta">
                 <Link to="/login" className="btn btn-primary">
