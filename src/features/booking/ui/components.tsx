@@ -5,12 +5,12 @@
  * helpers in `../time` and `../status`.
  */
 import type { CSSProperties } from "react";
-import type { DayStatus } from "../status";
+import { velozCarUrl } from "@/components/veloz/brand";
+import * as Ic from "@/components/veloz/icons";
+import { type BookingProgress, bookingProgress, type DayStatus } from "../status";
 import { fmtTime } from "../time";
 import type { BookingDraft, BookingView } from "../types";
 import { personOf, useBookingUi, useMeId, usePerson } from "./context";
-import * as Ic from "./icons";
-import velozCar from "./veloz-car.png";
 
 /** A CSS custom property (--pc) carrying a person's color. */
 function pcStyle(color: string): CSSProperties {
@@ -96,13 +96,29 @@ function RiderSummary({ riders }: { riders: Array<string> }) {
   );
 }
 
+const progressLabel: Record<BookingProgress, string> = {
+  done: "Done",
+  ongoing: "Ongoing",
+  upcoming: "Upcoming",
+};
+
+/** Done / Ongoing / Upcoming pill, driven by the live clock. */
+function StatusPill({ progress }: { progress: BookingProgress }) {
+  return (
+    <span className={`status-pill sp-${progress}`}>{progressLabel[progress]}</span>
+  );
+}
+
 /** A tappable booking row used across the agendas. */
 export function AgendaItem({
   b,
   onOpen,
+  showStatus = false,
 }: {
   b: BookingView;
   onOpen: (id: string) => void;
+  /** Show the live Done/Ongoing/Upcoming pill (used on the Today list). */
+  showStatus?: boolean;
 }) {
   const p = usePerson(b.person);
   const isMe = b.person === useMeId();
@@ -132,16 +148,26 @@ export function AgendaItem({
         <RiderSummary riders={b.riders} />
         {b.note && <span className="note">{b.note}</span>}
       </span>
-      <span className="chev">
-        <Ic.Chevron />
+      <span className="agenda-end">
+        {showStatus && <StatusPill progress={bookingProgress(b)} />}
+        <span className="chev">
+          <Ic.Chevron />
+        </span>
       </span>
     </button>
   );
 }
 
 /** The "who has the car now" hero banner shown on Home. */
-export function StatusBanner({ status }: { status: DayStatus }) {
+export function StatusBanner({
+  status,
+  onRequest,
+}: {
+  status: DayStatus;
+  onRequest?: (booking: BookingView) => void;
+}) {
   const { people } = useBookingUi();
+  const me = useMeId();
   const isFree = status.kind === "free" || status.kind === "day-free";
   const cls = isFree ? "banner is-free" : "banner is-busy";
 
@@ -153,18 +179,47 @@ export function StatusBanner({ status }: { status: DayStatus }) {
     style = pcStyle(personOf(people, status.items[0].person).color);
   }
 
+  // Someone else holds the car right now, so offer to ask for it.
+  const holder =
+    status.kind === "busy" || status.kind === "allday" ? status.booking : null;
+
   return (
     <div className={cls} style={style}>
       <div className="banner-content">
         <BannerInner status={status} />
+        {holder !== null &&
+          holder.person !== me &&
+          onRequest !== undefined && (
+            <RequestButton booking={holder} onRequest={onRequest} />
+          )}
       </div>
       <img
         className="banner-car"
-        src={velozCar}
+        src={velozCarUrl}
         alt="Toyota Veloz"
         aria-hidden="true"
       />
     </div>
+  );
+}
+
+function RequestButton({
+  booking,
+  onRequest,
+}: {
+  booking: BookingView;
+  onRequest: (booking: BookingView) => void;
+}) {
+  const p = usePerson(booking.person);
+
+  return (
+    <button
+      type="button"
+      className="btn-request"
+      onClick={() => { onRequest(booking); }}
+    >
+      <Ic.Bell /> Ask {p.name} for the car
+    </button>
   );
 }
 

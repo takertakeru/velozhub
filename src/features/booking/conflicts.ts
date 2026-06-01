@@ -1,4 +1,4 @@
-import { minsOf, nowManilaMinutes, todayManilaISO } from "./time";
+import { hhmmOfMins, minsOf, nowManilaMinutes, todayManilaISO } from "./time";
 import type { BookingDraft, BookingView } from "./types";
 
 /**
@@ -59,4 +59,69 @@ export function validateDraft(d: BookingDraft): DraftValidation {
   }
 
   return { ok: true, error: null };
+}
+
+const DAY_END_MINS = 24 * 60;
+
+/** Round a minute count up to the next quarter hour, capped at the day end. */
+function ceilQuarter(mins: number): number {
+  return Math.min(Math.ceil(mins / 15) * 15, DAY_END_MINS);
+}
+
+/**
+ * Find the nearest open slot of the same length, later the same day, when a
+ * timed draft clashes. Returns null when nothing fits (e.g. The day is taken by
+ * an all-day booking, or there is no room left). Half-open ranges, so it can
+ * butt right up against an existing booking.
+ */
+export function suggestFreeSlot(
+  draft: BookingDraft,
+  bookings: Array<BookingView>,
+): { start: string; end: string } | null {
+  if (draft.allDay || !draft.start || !draft.end) {
+    return null;
+  }
+
+  const duration = minsOf(draft.end) - minsOf(draft.start);
+
+  if (duration <= 0) {
+    return null;
+  }
+
+  const sameDay = bookings.filter(
+    (b) => b.date === draft.date && b.id !== draft.id,
+  );
+
+  // An all-day booking blocks the entire day, so there is nothing to suggest.
+  if (sameDay.some((b) => b.allDay)) {
+    return null;
+  }
+
+  const busy = sameDay
+    .filter((b) => !b.allDay)
+    .map((b) => ({ s: minsOf(b.start), e: minsOf(b.end) }))
+    .sort((a, b) => a.s - b.s);
+
+  // Earliest we are willing to suggest: the draft's own start, but never in the
+  // past for today.
+  const floor =
+    draft.date === todayManilaISO()
+      ? Math.max(minsOf(draft.start), ceilQuarter(nowManilaMinutes()))
+      : minsOf(draft.start);
+
+  // Candidate starts: the floor, plus the moment each existing booking frees up.
+  const candidates = [floor, ...busy.map((b) => b.e)]
+    .filter((start) => start >= floor && start + duration <= DAY_END_MINS)
+    .sort((a, b) => a - b);
+
+  for (const start of candidates) {
+    const end = start + duration;
+    const hasClash = busy.some((b) => start < b.e && b.s < end);
+
+    if (!hasClash) {
+      return { start: hhmmOfMins(start), end: hhmmOfMins(end) };
+    }
+  }
+
+  return null;
 }

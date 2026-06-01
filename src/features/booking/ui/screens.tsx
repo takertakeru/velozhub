@@ -7,7 +7,8 @@
  * status/conflict logic comes from the real helpers in `../status` / `../conflicts`.
  */
 import { useMemo, useState } from "react";
-import { findConflicts, validateDraft } from "../conflicts";
+import * as Ic from "@/components/veloz/icons";
+import { findConflicts, suggestFreeSlot, validateDraft } from "../conflicts";
 import { bookingsOnDate, dayStatus } from "../status";
 import {
   addDaysISO,
@@ -16,6 +17,7 @@ import {
   dowShort,
   fmtTime,
   fullDate,
+  minsOf,
   monShort,
   relDayLabel,
   todayManilaISO,
@@ -31,8 +33,14 @@ import {
   StatusBanner,
   Switch,
 } from "./components";
-import { personOf, useBookingUi, useMeId, usePeopleOrder, usePerson } from "./context";
-import * as Ic from "./icons";
+import {
+  personOf,
+  useBookingUi,
+  useIsAdmin,
+  useMeId,
+  usePeopleOrder,
+  usePerson,
+} from "./context";
 
 /** Day-of-month (1-31) for a "yyyy-MM-dd" date string. */
 const dayNum = (iso: string) => Number(iso.split("-")[2]);
@@ -43,6 +51,18 @@ function dayCellClass(active: boolean, isToday: boolean): string {
   return ["daycell", active && "active", isToday && "today"]
     .filter(Boolean)
     .join(" ");
+}
+
+/** Human duration like "2h 30m" / "45m" / "3h". */
+function fmtDuration(mins: number): string {
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+
+  if (h > 0 && m > 0) {
+    return `${h}h ${m}m`;
+  }
+
+  return h > 0 ? `${h}h` : `${m}m`;
 }
 
 /** Seven ISO dates for the week containing `anchorIso` (Monday start). */
@@ -104,10 +124,12 @@ export function HomeScreen({
   bookings,
   wide,
   onOpen,
+  onRequest,
 }: {
   bookings: Array<BookingView>;
   wide: boolean;
   onOpen: (id: string) => void;
+  onRequest: (booking: BookingView) => void;
 }) {
   const today = todayManilaISO();
   const status = useMemo(() => dayStatus(today, bookings), [today, bookings]);
@@ -128,9 +150,9 @@ export function HomeScreen({
   const todayList =
     todayItems.length > 0 ? (
       <ul className="agenda">
-        {todayItems.map((b) => 
+        {todayItems.map((b) =>
           { return <li key={b.id}>
-            <AgendaItem b={b} onOpen={onOpen} />
+            <AgendaItem showStatus b={b} onOpen={onOpen} />
           </li> }
         )}
       </ul>
@@ -141,7 +163,7 @@ export function HomeScreen({
   if (!wide) {
     return (
       <div className="content">
-        <StatusBanner status={status} />
+        <StatusBanner status={status} onRequest={onRequest} />
         <div className="section-head">
           <h2>Today</h2>
           <span className="count">{fullDate(today)}</span>
@@ -163,7 +185,7 @@ export function HomeScreen({
       </header>
       <div className="home-grid">
         <div className="today-col">
-          <StatusBanner status={status} />
+          <StatusBanner status={status} onRequest={onRequest} />
           <div className="section-head">
             <h2>Today&apos;s bookings</h2>
             <span className="count">
@@ -371,6 +393,10 @@ export function BookingForm({
     () => findConflicts(draft, bookings),
     [draft, bookings],
   );
+  const suggestion = useMemo(
+    () => (conflicts.length > 0 ? suggestFreeSlot(draft, bookings) : null),
+    [conflicts, draft, bookings],
+  );
   const valid = validateDraft(draft);
   const set = (patch: Partial<BookingDraft>) =>
     { setDraft((d) => ({ ...d, ...patch })); };
@@ -383,6 +409,11 @@ export function BookingForm({
     }); };
   const isEditing = Boolean(initial.id);
   const canSave = valid.ok && !saving;
+  const durationMins =
+    !draft.allDay && draft.start && draft.end
+      ? minsOf(draft.end) - minsOf(draft.start)
+      : 0;
+  const durationLabel = durationMins > 0 ? fmtDuration(durationMins) : null;
 
   return (
     // eslint-disable-next-line jsx-a11y/no-static-element-interactions
@@ -395,7 +426,14 @@ export function BookingForm({
       <div className="sheet" role="dialog" aria-modal="true">
         <div className="grabber" />
         <div className="sheet-head">
-          <h2>{isEditing ? "Edit booking" : "New booking"}</h2>
+          <div className="sheet-title">
+            <h2>{isEditing ? "Edit booking" : "New booking"}</h2>
+            <p>
+              {isEditing
+                ? "Update your trip on the Veloz."
+                : "Reserve the family Veloz."}
+            </p>
+          </div>
           <button className="icon-btn" aria-label="Close" onClick={onClose}>
             <Ic.Close />
           </button>
@@ -403,20 +441,25 @@ export function BookingForm({
         <div className="sheet-body">
           <div className="field">
             <label htmlFor="bk-date">Date</label>
-            <input
-              id="bk-date"
-              type="date"
-              className="input tnum"
-              value={draft.date}
-              min={todayManilaISO()}
-              onChange={(e) => { set({ date: e.target.value }); }}
-            />
+            <div className="input-wrap">
+              <Ic.Calendar />
+              <input
+                id="bk-date"
+                type="date"
+                className="input has-icon tnum"
+                value={draft.date}
+                min={todayManilaISO()}
+                onChange={(e) => { set({ date: e.target.value }); }}
+              />
+            </div>
           </div>
 
           <div className="field">
             <div className="toggle-row">
               <div className="tl">
-                <b>All day</b>
+                <b>
+                  <Ic.Sun /> All day
+                </b>
                 <span>Blocks the whole day for everyone</span>
               </div>
               <Switch
@@ -428,25 +471,39 @@ export function BookingForm({
 
           {!draft.allDay && (
             <div className="field">
-              <label htmlFor="bk-start">Time</label>
+              <label htmlFor="bk-start">
+                Time
+                {durationLabel && (
+                  <span className="faint" style={{ fontWeight: 500 }}>
+                    {" "}
+                    · {durationLabel}
+                  </span>
+                )}
+              </label>
               <div className="time-row">
-                <input
-                  id="bk-start"
-                  type="time"
-                  className="input tnum"
-                  value={draft.start}
-                  step={900}
-                  aria-label="Start time"
-                  onChange={(e) => { set({ start: e.target.value }); }}
-                />
-                <input
-                  type="time"
-                  className="input tnum"
-                  value={draft.end}
-                  step={900}
-                  aria-label="End time"
-                  onChange={(e) => { set({ end: e.target.value }); }}
-                />
+                <div className="input-wrap">
+                  <Ic.Clock />
+                  <input
+                    id="bk-start"
+                    type="time"
+                    className="input has-icon tnum"
+                    value={draft.start}
+                    step={900}
+                    aria-label="Start time"
+                    onChange={(e) => { set({ start: e.target.value }); }}
+                  />
+                </div>
+                <div className="input-wrap">
+                  <Ic.Clock />
+                  <input
+                    type="time"
+                    className="input has-icon tnum"
+                    value={draft.end}
+                    step={900}
+                    aria-label="End time"
+                    onChange={(e) => { set({ end: e.target.value }); }}
+                  />
+                </div>
               </div>
             </div>
           )}
@@ -496,6 +553,25 @@ export function BookingForm({
                 <div className="w-title">Check the times</div>
                 <div className="w-body">{valid.error}</div>
               </div>
+            </div>
+          )}
+
+          {suggestion && (
+            <div className="suggest">
+              <Ic.Clock />
+              <span className="lbl">Nearest free time</span>
+              <span className="tm tnum">
+                {fmtTime(suggestion.start)} to {fmtTime(suggestion.end)}
+              </span>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => {
+                  set({ start: suggestion.start, end: suggestion.end });
+                }}
+              >
+                Use this
+              </button>
             </div>
           )}
         </div>
@@ -566,6 +642,10 @@ export function DetailSheet({
   const [isConfirming, setIsConfirming] = useState(false);
   const p = usePerson(booking.person);
   const isMine = booking.person === useMeId();
+  const isAdmin = useIsAdmin();
+  // The owner manages their own trip; an admin can manage anyone's (RLS allows
+  // this too, so the DB agrees with the UI).
+  const canManage = isMine || isAdmin;
   const when = booking.allDay
     ? "All day"
     : `${fmtTime(booking.start)} to ${fmtTime(booking.end)}`;
@@ -634,13 +714,18 @@ export function DetailSheet({
             </div>
           </div>
 
-          {!isMine && (
+          {!isMine && isAdmin && (
+            <div className="lock-note">
+              <Ic.Lock /> {p.name}&apos;s booking. You can manage it as an admin.
+            </div>
+          )}
+          {!canManage && (
             <div className="lock-note">
               <Ic.Lock /> Only {p.name} can edit or cancel this booking.
             </div>
           )}
         </div>
-        {isMine && (
+        {canManage && (
           <div className="sheet-foot">
             {isConfirming ? (
               <>
@@ -678,6 +763,89 @@ export function DetailSheet({
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+/** Usage screen: trips and hours per person for the current Manila month. */
+export function StatsScreen({ bookings }: { bookings: Array<BookingView> }) {
+  const { people } = useBookingUi();
+  /**
+   * "yyyy-MM".
+   */
+  const month = todayManilaISO().slice(0, 7); 
+
+  const stats = useMemo(() => {
+    const acc = new Map<string, { trips: number; mins: number }>();
+
+    for (const id of people.order) {
+      acc.set(id, { trips: 0, mins: 0 });
+    }
+    for (const b of bookings) {
+      if (!b.date.startsWith(month)) {
+        continue;
+      }
+
+      const row = acc.get(b.person) ?? { trips: 0, mins: 0 };
+
+      row.trips = row.trips + 1;
+      if (!b.allDay) {
+        row.mins = row.mins + (minsOf(b.end) - minsOf(b.start));
+      }
+      acc.set(b.person, row);
+    }
+
+    return people.order
+      .map((id) => ({ id, ...(acc.get(id) ?? { trips: 0, mins: 0 }) }))
+      .sort((a, b) => b.trips - a.trips || b.mins - a.mins);
+  }, [bookings, people, month]);
+
+  const maxTrips = Math.max(1, ...stats.map((s) => s.trips));
+  const totalTrips = stats.reduce((n, s) => n + s.trips, 0);
+  const monthLabel = `${monShort[Number(month.slice(5, 7)) - 1]} ${month.slice(0, 4)}`;
+
+  return (
+    <div className="content">
+      <header className="page-head">
+        <div>
+          <h1>Usage</h1>
+          <div className="sub">
+            {monthLabel} · {totalTrips} trip{totalTrips === 1 ? "" : "s"}
+          </div>
+        </div>
+      </header>
+      {totalTrips === 0 ? (
+        <EmptyDay label="this month" />
+      ) : (
+        <div className="stat-list">
+          {stats.map((s) => {
+            const p = personOf(people, s.id);
+            const hours = Math.round((s.mins / 60) * 10) / 10;
+
+            return (
+              <div
+                className="stat-row"
+                key={s.id}
+                style={{ "--pc": p.color } as React.CSSProperties}
+              >
+                <Avatar pid={s.id} />
+                <div className="stat-main">
+                  <div className="stat-top">
+                    <span className="nm">{p.name}</span>
+                    <span className="stat-val">
+                      {s.trips} trip{s.trips === 1 ? "" : "s"}
+                      {hours > 0 ? ` · ${hours}h` : ""}
+                    </span>
+                  </div>
+                  <div className="stat-bar">
+                    <span style={{ width: `${(s.trips / maxTrips) * 100}%` }} />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

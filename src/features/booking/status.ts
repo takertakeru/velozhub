@@ -24,6 +24,29 @@ export function bookingsOnDate(
   return sortBookings(list.filter((b) => b.date === dateISO));
 }
 
+export type BookingProgress = "done" | "ongoing" | "upcoming";
+
+/**
+ * Where a booking sits relative to the live Manila clock: already finished,
+ * happening now, or still to come. Past/future dates short-circuit; for today a
+ * timed booking is compared against the current minute, and an all-day booking
+ * counts as ongoing.
+ */
+export function bookingProgress(b: BookingView): BookingProgress {
+  const today = todayManilaISO();
+
+  if (b.date < today) {return "done";}
+  if (b.date > today) {return "upcoming";}
+  if (b.allDay) {return "ongoing";}
+
+  const now = nowManilaMinutes();
+
+  if (now >= minsOf(b.end)) {return "done";}
+  if (now >= minsOf(b.start)) {return "ongoing";}
+
+  return "upcoming";
+}
+
 export type DayStatus =
   | { kind: "allday"; booking: BookingView; isToday: boolean }
   | { kind: "busy"; booking: BookingView; next?: BookingView; isToday: boolean }

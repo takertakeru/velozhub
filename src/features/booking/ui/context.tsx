@@ -58,6 +58,13 @@ export function useMeId(): string {
   return useBookingUi().me;
 }
 
+/** Whether the signed-in user is a household admin (can manage any booking). */
+export function useIsAdmin(): boolean {
+  const { people, me } = useBookingUi();
+
+  return personOf(people, me).role === "admin";
+}
+
 /** Profile ids in seed order. */
 export function usePeopleOrder(): Array<string> {
   return useBookingUi().people.order;
