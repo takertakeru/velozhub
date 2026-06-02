@@ -13,6 +13,7 @@
  */
 import "@/components/veloz/veloz.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { toaster } from "@/components/ui/toast";
 import {
@@ -252,10 +253,26 @@ function Shell({
   const [detailId, setDetailId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(null);
 
+  const queryClient = useQueryClient();
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const createM = useCreateBooking();
   const updateM = useUpdateBooking();
   const cancelM = useCancelBooking();
   const sendNudgeM = useSendNudge();
+
+  /**
+   * Manual data refresh. In an installed PWA there is no browser reload, so this
+   * re-fetches every active query (bookings, profiles, vehicle, me). The refetch
+   * is usually near-instant, so we hold the spinner for one full rotation (the
+   * animation is 0.8s) so it ends smoothly instead of snapping mid-spin.
+   */
+  const refresh = () => {
+    setIsRefreshing(true);
+    void Promise.all([
+      queryClient.invalidateQueries(),
+      new Promise((resolve) => { setTimeout(resolve, 800); }),
+    ]).finally(() => { setIsRefreshing(false); });
+  };
 
   // Live in-app notification when someone asks you for the car.
   const onNudge = useCallback(
@@ -415,15 +432,25 @@ function Shell({
       <div className="app-frame">
         {/* Desktop sidebar */}
         <aside className="sidebar">
-          <button
-            type="button"
-            className="brand"
-            aria-label="Go to home"
-            onClick={() => { setScreen("home"); }}
-          >
-            <VelozMark className="mark" /> VelozHub
-          </button>
-          {navItems.map((n) => 
+          <div className="sidebar-top">
+            <button
+              type="button"
+              className="brand"
+              aria-label="Go to home"
+              onClick={() => { setScreen("home"); }}
+            >
+              <VelozMark className="mark" /> VelozHub
+            </button>
+            <button
+              type="button"
+              className="icon-btn"
+              aria-label="Refresh"
+              onClick={refresh}
+            >
+              <Ic.Refresh className={isRefreshing ? "spin" : undefined} />
+            </button>
+          </div>
+          {navItems.map((n) =>
             { return <button
               key={n.id}
               className={`nav-link${  screen === n.id ? " active" : ""}`}
@@ -457,15 +484,25 @@ function Shell({
               <VelozMark className="mark" /> VelozHub
             </button>
             <div className="spacer" />
-            <button
-              type="button"
-              className={screen === "stats" ? "icon-btn active" : "icon-btn"}
-              aria-label="Usage"
-              aria-pressed={screen === "stats"}
-              onClick={() => { setScreen("stats"); }}
-            >
-              <Ic.Chart />
-            </button>
+            <div className="topbar-actions">
+              <button
+                type="button"
+                className="icon-btn"
+                aria-label="Refresh"
+                onClick={refresh}
+              >
+                <Ic.Refresh className={isRefreshing ? "spin" : undefined} />
+              </button>
+              <button
+                type="button"
+                className={screen === "stats" ? "icon-btn active" : "icon-btn"}
+                aria-label="Usage"
+                aria-pressed={screen === "stats"}
+                onClick={() => { setScreen("stats"); }}
+              >
+                <Ic.Chart />
+              </button>
+            </div>
             <AccountMenu
               me={me}
               people={people}

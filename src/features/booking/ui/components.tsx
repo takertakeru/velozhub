@@ -131,7 +131,10 @@ export function AgendaItem({
     >
       <span className="time-col">
         {b.allDay ? (
-          <AllDayTag />
+          <span className="allday-col">
+            <Ic.Sun />
+            <span>All day</span>
+          </span>
         ) : (
           <>
             <span className="time-start tnum">{fmtTime(b.start)}</span>
