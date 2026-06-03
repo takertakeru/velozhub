@@ -168,3 +168,21 @@ export function fullDate(dateISO: string): string {
 
   return `${dowShort[dowOf(dateISO)]}, ${monShort[m - 1]} ${d}`;
 }
+
+/** The Manila local date ("yyyy-MM-dd") for a stored UTC instant. */
+export function manilaDateISO(instantUtc: string): string {
+  return dateISOof(manilaView(instantUtc));
+}
+
+/**
+ * Format a stored UTC instant as a Manila date + time, e.g. "May 31, 9:15 AM".
+ * Used for fuel fill-up entries, which carry a `created_at` timestamp rather
+ * than a wall-clock booking range.
+ */
+export function fmtDateTime(instantUtc: string): string {
+  const d = manilaView(instantUtc);
+  const dateISO = dateISOof(d);
+  const [, m, day] = dateISO.split("-").map(Number);
+
+  return `${monShort[m - 1]} ${day}, ${fmtTime(hhmmOf(d))}`;
+}

@@ -44,6 +44,8 @@ export function personOf(people: PeopleData, id: string): Person {
       name: "Unknown",
       color: "var(--ink-3)",
       initials: "?",
+      role: "member",
+      voteOptional: false,
     }
   );
 }

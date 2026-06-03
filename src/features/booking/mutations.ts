@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/libs/supabase/client";
+import type { FuelBrand } from "@/libs/supabase/types";
 import { bookingKeys } from "./queries";
 import { allDayRangeUtc, timedRangeUtc } from "./time";
 import type { BookingDraft } from "./types";
@@ -11,7 +12,7 @@ import type { BookingDraft } from "./types";
 
 type PostgrestLikeError = { code?: string; message?: string };
 
-function mapBookingError(error: PostgrestLikeError): Error {
+export function mapBookingError(error: PostgrestLikeError): Error {
   if (
     error.code === "23P01" ||
     (error.message ?? "").includes("bookings_no_overlap")
@@ -59,7 +60,13 @@ export type CreateBookingInput = {
   userId: string;
 };
 
-/** Create a new booking (plus its riders). */
+/**
+ * Create a new booking as a proposal (status 'pending') plus its riders, then
+ * auto-cast the proposer's approve. The poll, not this insert, confirms the
+ * booking: it stays pending until one other member approves (or the 15-minute
+ * silence window elapses). Pending rows are exempt from the overlap constraint,
+ * so two proposals for the same slot can coexist until one wins.
+ */
 export function useCreateBooking() {
   const qc = useQueryClient();
 
@@ -81,6 +88,7 @@ export function useCreateBooking() {
           end_at: range.endAt,
           all_day: draft.allDay,
           note: draft.note.trim() || null,
+          status: "pending",
         })
         .select("id")
         .single();
@@ -89,10 +97,18 @@ export function useCreateBooking() {
 
       await replaceRiders(data.id, draft.riders);
 
+      const { error: voteError } = await supabase.rpc("cast_booking_vote", {
+        p_booking_id: data.id,
+        p_approve: true,
+      });
+
+      if (voteError) {throw voteError;}
+
       return data.id;
     },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: bookingKeys.bookings });
+      void qc.invalidateQueries({ queryKey: bookingKeys.polls });
     },
   });
 }
@@ -124,6 +140,75 @@ export function useUpdateBooking() {
     },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: bookingKeys.bookings });
+    },
+  });
+}
+
+export type UpdateFuelInput = {
+  vehicleId: string;
+  level: number;
+  userId: string;
+};
+
+/** Record the shared vehicle's current fuel level (0-100). */
+export function useUpdateFuel() {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ vehicleId, level, userId }: UpdateFuelInput) => {
+      const { error } = await supabase
+        .from("vehicles")
+        .update({
+          fuel_level: level,
+          fuel_updated_at: new Date().toISOString(),
+          fuel_updated_by: userId,
+        })
+        .eq("id", vehicleId);
+
+      if (error) {throw error;}
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: bookingKeys.vehicle });
+    },
+  });
+}
+
+export type LogFuelInput = {
+  vehicleId: string;
+  householdId: string;
+  userId: string;
+  amountPhp: number;
+  brand: FuelBrand;
+};
+
+/**
+ * Record a fuel fill-up: peso amount + station brand for the shared Veloz. The
+ * timestamp is the row's `created_at` default (now). The Veloz runs on unleaded,
+ * so `fuel_type` falls back to the column default rather than being a form field.
+ */
+export function useLogFuel() {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      vehicleId,
+      householdId,
+      userId,
+      amountPhp,
+      brand,
+    }: LogFuelInput) => {
+      const { error } = await supabase.from("fuel_logs").insert({
+        vehicle_id: vehicleId,
+        household_id: householdId,
+        user_id: userId,
+        amount_php: amountPhp,
+        brand,
+      });
+
+      if (error) {throw error;}
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: bookingKeys.fuelLogs });
     },
   });
 }

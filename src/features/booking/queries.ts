@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/libs/supabase/client";
+import type { FuelLog } from "@/libs/supabase/types";
 import {
   type BookingRowWithRiders,
   type BookingView,
@@ -11,6 +12,8 @@ export const bookingKeys = {
   profiles: ["profiles"] as const,
   vehicle: ["vehicle"] as const,
   bookings: ["bookings"] as const,
+  polls: ["polls"] as const,
+  fuelLogs: ["fuel-logs"] as const,
 };
 
 export type PeopleData = {
@@ -98,6 +101,28 @@ export function useBookings() {
       if (error) {throw error;}
 
       return (data as unknown as Array<BookingRowWithRiders>).map(toBookingView);
+    },
+  });
+}
+
+/**
+ * Every fuel fill-up logged for the household, newest first. Like bookings, the
+ * dataset is tiny (one family, one car), so we fetch them all and let the
+ * history screen paginate and total them on the client. Realtime keeps it fresh.
+ */
+export function useFuelLogs() {
+  return useQuery({
+    queryKey: bookingKeys.fuelLogs,
+    staleTime: 30 * 1000,
+    queryFn: async (): Promise<Array<FuelLog>> => {
+      const { data, error } = await supabase
+        .from("fuel_logs")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) {throw error;}
+
+      return data;
     },
   });
 }
