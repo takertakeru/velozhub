@@ -30,6 +30,7 @@ import {
   useUpdateBooking,
 } from "../mutations";
 import { useNudgeInbox, useSendNudge } from "../nudges";
+import { usePollResolver, usePolls } from "../polls";
 import {
   type PeopleData,
   useBookings,
@@ -42,6 +43,8 @@ import { todayManilaISO } from "../time";
 import type { BookingDraft, BookingView } from "../types";
 import { Avatar } from "./components";
 import { BookingUiProvider, personOf, useBookingUi } from "./context";
+import { FuelHistoryScreen } from "./FuelHistoryScreen";
+import { PollCenter } from "./PollCenter";
 import {
   BookingForm,
   DetailSheet,
@@ -50,7 +53,7 @@ import {
   WeekScreen,
 } from "./screens";
 
-type Screen = "home" | "week" | "stats";
+type Screen = "home" | "week" | "stats" | "fuel";
 type FormState = { mode: "new" } | { mode: "edit"; id: string } | null;
 type Theme = "light" | "dark";
 
@@ -63,6 +66,8 @@ function notifyError(err: unknown, fallback: string) {
 export function VelozApp() {
   // Keep every phone in sync the moment a booking changes anywhere.
   useBookingsRealtime();
+  // Auto-confirm proposals once their 15-minute silence window elapses.
+  usePollResolver();
 
   const meQ = useMe();
   const profilesQ = useProfiles();
@@ -234,6 +239,30 @@ function AccountMenu({
   );
 }
 
+/**
+ * Nav bell that opens the poll center. Shows a badge with the number of open
+ * polls still awaiting the signed-in user's vote.
+ */
+function PollBell({ count, onClick }: { count: number; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      className="icon-btn poll-bell"
+      aria-label={
+        count > 0
+          ? `Pending approvals, ${count} awaiting your vote`
+          : "Pending approvals"
+      }
+      onClick={onClick}
+    >
+      <Ic.Bell />
+      {count > 0 && (
+        <span className="poll-badge">{count > 9 ? "9+" : count}</span>
+      )}
+    </button>
+  );
+}
+
 function Shell({
   me,
   vehicleId,
@@ -259,6 +288,37 @@ function Shell({
   const updateM = useUpdateBooking();
   const cancelM = useCancelBooking();
   const sendNudgeM = useSendNudge();
+
+  // Open booking polls and how many still await this user's vote.
+  const pollsQ = usePolls();
+  const polls = useMemo(() => pollsQ.data ?? [], [pollsQ.data]);
+  const owedVotes = useMemo(
+    () => polls.filter((p) => !p.votes.some((v) => v.profileId === me)).length,
+    [polls, me],
+  );
+
+  const [isPollsOpen, setIsPollsOpen] = useState(false);
+  // Once minimized, stay minimized until the user clears every poll; a fresh
+  // batch of unvoted polls then pops the center open again on its own.
+  const dismissedRef = useRef(false);
+
+  useEffect(() => {
+    if (owedVotes === 0) {
+      dismissedRef.current = false;
+
+      return;
+    }
+
+    if (!dismissedRef.current) {
+      setIsPollsOpen(true);
+    }
+  }, [owedVotes]);
+
+  const openPolls = () => { setIsPollsOpen(true); };
+  const minimizePolls = () => {
+    dismissedRef.current = true;
+    setIsPollsOpen(false);
+  };
 
   /**
    * Manual data refresh. In an installed PWA there is no browser reload, so this
@@ -377,6 +437,7 @@ function Shell({
     { id: "home", label: "Home", icon: Ic.Home },
     { id: "week", label: "Week", icon: Ic.Calendar },
     { id: "stats", label: "Usage", icon: Ic.Chart },
+    { id: "fuel", label: "Fuel", icon: Ic.Fuel },
   ];
 
   const toggleTheme = () => {
@@ -410,21 +471,37 @@ function Shell({
     );
   };
 
-  let screenView = (
-    <HomeScreen
-      bookings={bookings}
-      wide={isWide}
-      onOpen={setDetailId}
-      onRequest={requestCar}
-    />
-  );
+  let screenView: React.ReactNode;
 
-  if (screen === "week") {
-    screenView = (
-      <WeekScreen bookings={bookings} wide={isWide} onOpen={setDetailId} />
-    );
-  } else if (screen === "stats") {
-    screenView = <StatsScreen bookings={bookings} />;
+  switch (screen) {
+    case "week": {
+      screenView = (
+        <WeekScreen bookings={bookings} wide={isWide} onOpen={setDetailId} />
+      );
+      break;
+    }
+    case "stats": {
+      screenView = <StatsScreen bookings={bookings} />;
+      break;
+    }
+    case "fuel": {
+      screenView = (
+        <FuelHistoryScreen wide={isWide} onBack={() => { setScreen("home"); }} />
+      );
+      break;
+    }
+    case "home": {
+      screenView = (
+        <HomeScreen
+          bookings={bookings}
+          wide={isWide}
+          onOpen={setDetailId}
+          onRequest={requestCar}
+          onOpenFuelHistory={() => { setScreen("fuel"); }}
+        />
+      );
+      break;
+    }
   }
 
   return (
@@ -449,6 +526,9 @@ function Shell({
             >
               <Ic.Refresh className={isRefreshing ? "spin" : undefined} />
             </button>
+            {polls.length > 0 && (
+              <PollBell count={owedVotes} onClick={openPolls} />
+            )}
           </div>
           {navItems.map((n) =>
             { return <button
@@ -485,6 +565,9 @@ function Shell({
             </button>
             <div className="spacer" />
             <div className="topbar-actions">
+              {polls.length > 0 && (
+                <PollBell count={owedVotes} onClick={openPolls} />
+              )}
               <button
                 type="button"
                 className="icon-btn"
@@ -556,6 +639,9 @@ function Shell({
             onSave={saveBooking}
             onClose={() => { setForm(null); }}
           />
+        )}
+        {isPollsOpen && polls.length > 0 && (
+          <PollCenter wide={isWide} polls={polls} onClose={minimizePolls} />
         )}
       </div>
     </div>

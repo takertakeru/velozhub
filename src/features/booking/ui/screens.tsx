@@ -41,6 +41,7 @@ import {
   usePeopleOrder,
   usePerson,
 } from "./context";
+import { FuelGauge } from "./FuelGauge";
 
 /** Day-of-month (1-31) for a "yyyy-MM-dd" date string. */
 const dayNum = (iso: string) => Number(iso.split("-")[2]);
@@ -125,11 +126,13 @@ export function HomeScreen({
   wide,
   onOpen,
   onRequest,
+  onOpenFuelHistory,
 }: {
   bookings: Array<BookingView>;
   wide: boolean;
   onOpen: (id: string) => void;
   onRequest: (booking: BookingView) => void;
+  onOpenFuelHistory: () => void;
 }) {
   const today = todayManilaISO();
   const status = useMemo(() => dayStatus(today, bookings), [today, bookings]);
@@ -164,6 +167,7 @@ export function HomeScreen({
     return (
       <div className="content">
         <StatusBanner status={status} onRequest={onRequest} />
+        <FuelGauge wide={wide} onOpenHistory={onOpenFuelHistory} />
         <div className="section-head">
           <h2>Today</h2>
           <span className="count">{fullDate(today)}</span>
@@ -186,6 +190,7 @@ export function HomeScreen({
       <div className="home-grid">
         <div className="today-col">
           <StatusBanner status={status} onRequest={onRequest} />
+          <FuelGauge wide={wide} onOpenHistory={onOpenFuelHistory} />
           <div className="section-head">
             <h2>Today&apos;s bookings</h2>
             <span className="count">
@@ -408,7 +413,9 @@ export function BookingForm({
         : [...draft.riders, r],
     }); };
   const isEditing = Boolean(initial.id);
-  const canSave = valid.ok && !saving;
+  // A clash here is against a confirmed booking, which the DB will always
+  // reject, so block the save rather than open a doomed proposal.
+  const canSave = valid.ok && !saving && conflicts.length === 0;
   const durationMins =
     !draft.allDay && draft.start && draft.end
       ? minsOf(draft.end) - minsOf(draft.start)

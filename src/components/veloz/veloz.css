@@ -570,8 +570,28 @@ textarea.input { height: auto; min-height: 84px; padding: var(--s3) var(--s4); r
   }
   .wblock::before { content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background: var(--pc); }
   .wblock .wt { font-weight: 800; font-size: var(--fs-micro); color: color-mix(in srgb, var(--pc) 70%, var(--ink)); font-variant-numeric: tabular-nums; }
-  .wblock .wn { font-weight: 700; font-size: var(--fs-sm); }
-  .wblock.allday .wt { display: flex; align-items: center; gap: 4px; }
+  .wblock .wn { font-weight: 700; font-size: var(--fs-sm); margin-top: 2px; }
+  /* All-day fills the day column: a green (person-color) header banner over a
+     white body, wrapped in a matching border, so "the whole day is taken" is
+     obvious without a heavy solid fill. The sun icon must be sized or it renders
+     at its huge intrinsic size. */
+  .wblock.allday {
+    flex: 1; padding: 0; background: var(--surface);
+    border: 1.5px solid var(--pc); box-shadow: none;
+    display: flex; flex-direction: column;
+  }
+  .wblock.allday::before { display: none; }
+  .wblock.allday .wt {
+    display: flex; align-items: center; gap: 5px; white-space: nowrap;
+    padding: 5px var(--s3); background: var(--pc); color: #fff;
+    text-transform: uppercase; letter-spacing: .03em;
+  }
+  .wblock.allday .wt svg { width: 13px; height: 13px; flex: none; }
+  /* Name centers in the white body below the top banner. */
+  .wblock.allday .wn {
+    flex: 1; margin: 0; padding: var(--s2) var(--s3); color: var(--ink);
+    display: grid; place-items: center; text-align: center;
+  }
   .weekgrid .wempty { flex: 1; display: grid; place-items: center; color: var(--ink-3); font-size: var(--fs-micro); opacity: .6; }
 
   /* New booking as centered modal on desktop */
@@ -689,6 +709,109 @@ textarea.input { height: auto; min-height: 84px; padding: var(--s3) var(--s4); r
 .landing-foot { text-align: center; color: var(--ink-3); font-size: var(--fs-sm); padding: var(--s6) var(--s6) var(--s8); }
 
 /* ============================================================
+   FUEL GAUGE (Toyota-style segmented bar)
+   ============================================================ */
+.fuel-card {
+  margin-top: var(--s4); padding: var(--s5);
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: calc(var(--r-lg) * var(--radius-scale)); box-shadow: var(--shadow-sm);
+}
+.fuel-head { display: flex; align-items: center; gap: var(--s4); }
+.fuel-ic { width: 44px; height: 44px; flex: none; border-radius: var(--r-md); display: grid; place-items: center; background: var(--surface-2); }
+.fuel-ic svg { width: 24px; height: 24px; }
+.fuel-meta { flex: 1; min-width: 0; }
+.fuel-labels { display: flex; align-items: center; gap: var(--s2); }
+.fuel-meta .lbl { font-size: var(--fs-micro); font-weight: 800; letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--ink-3); }
+.fuel-meta .val { display: flex; align-items: baseline; gap: 2px; margin-top: 3px; font-size: 26px; font-weight: 800; letter-spacing: -.02em; line-height: 1; }
+.fuel-meta .val .unit { font-size: var(--fs-body); font-weight: 700; color: var(--ink-3); }
+
+.fuel-gauge { display: flex; align-items: flex-end; gap: var(--s3); margin-top: var(--s5); }
+.fuel-gauge .cap { font-size: var(--fs-sm); font-weight: 800; color: var(--ink-3); width: 12px; text-align: center; line-height: 1; }
+.fuel-segs { flex: 1; display: flex; align-items: flex-end; gap: 5px; height: 34px; }
+.fuel-seg { flex: 1; border-radius: 4px; background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--border-strong); transition: background .2s; }
+.fuel-seg.on { box-shadow: none; }
+
+.fuel-foot { margin-top: var(--s5); padding-top: var(--s4); border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: var(--s3); }
+.fuel-foot .by { font-size: var(--fs-sm); color: var(--ink-3); text-align: right; }
+
+/* Small "Unleaded" pill, on the fuel card header and the log sheet subtitle. */
+.fuel-type-badge {
+  display: inline-block; vertical-align: middle;
+  padding: 2px 8px; border-radius: var(--r-pill);
+  font-size: 10px; font-weight: 800; letter-spacing: var(--tracking-label);
+  text-transform: uppercase; line-height: 1.4;
+  color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--tint-base));
+}
+
+.fuel-edit { margin-top: var(--s4); }
+.fuel-edit input[type="range"] { width: 100%; accent-color: var(--accent); height: 24px; cursor: pointer; }
+.fuel-presets { display: flex; align-items: center; gap: var(--s2); margin-top: var(--s2); }
+.fuel-presets .chip.selectable { height: 34px; padding: 0 var(--s3); font-size: var(--fs-sm); }
+.fuel-draft { margin-left: auto; font-weight: 800; }
+.fuel-actions { display: flex; gap: var(--s3); margin-top: var(--s4); }
+.fuel-actions .btn { flex: 1; }
+
+/* ============================================================
+   FUEL LOG SHEET + HISTORY SCREEN
+   ============================================================ */
+/* Peso-prefixed amount field (reuses the leading-icon input slot). */
+.peso-wrap .peso-sign {
+  position: absolute; left: var(--s4); top: 50%; transform: translateY(-50%);
+  font-weight: 800; font-size: var(--fs-body); color: var(--ink-3); z-index: 1; pointer-events: none;
+}
+.peso-wrap .input.has-icon { padding-left: calc(var(--s4) + 20px); }
+.brand-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--s2); }
+.brand-grid .chip.selectable { justify-content: flex-start; padding-left: var(--s2); padding-right: var(--s3); }
+/* Brand mark: rounded tile in the station's signature color with its initial. */
+.brand-icon {
+  display: inline-grid; place-items: center; flex: none;
+  border-radius: 7px; font-weight: 800; letter-spacing: -.02em; line-height: 1;
+}
+/* Real brand logo (when an asset exists): sits on a white rounded tile so
+   transparent / dark logos stay legible in both themes. */
+.brand-logo {
+  flex: none; box-sizing: border-box; object-fit: contain;
+  border-radius: 7px; background: #fff; padding: 2px;
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+/* Sheet footer with the history link beside the save button. */
+.fuel-log-foot .btn { flex: 1; }
+
+/* History screen header: back button + titles + log action. */
+.screen-head { display: flex; align-items: center; gap: var(--s3); margin-bottom: var(--s5); }
+.screen-head-titles { flex: 1; min-width: 0; }
+.screen-head-titles h1 { font-size: var(--fs-title); font-weight: 800; letter-spacing: -.02em; }
+.screen-head-titles .sub { color: var(--ink-3); font-size: var(--fs-sm); margin-top: 1px; }
+
+/* Analytics cards. */
+.fuel-analytics { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--s3); margin-bottom: var(--s2); }
+.fuel-stat {
+  padding: var(--s4); border: 1px solid var(--border); border-radius: var(--r-md);
+  background: var(--surface); box-shadow: var(--shadow-sm);
+}
+.fuel-stat .lbl { font-size: var(--fs-micro); font-weight: 800; letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--ink-3); }
+.fuel-stat .val { font-size: var(--fs-title); font-weight: 800; letter-spacing: -.02em; margin-top: 4px; }
+
+/* Fill-up ledger rows. */
+.fuel-log-list { display: flex; flex-direction: column; }
+.fuel-log-item { display: flex; align-items: center; gap: var(--s4); padding: var(--s3) 0; border-top: 1px solid var(--border); }
+.fuel-log-item:first-child { border-top: none; }
+.fuel-log-item .fl-main { flex: 1; min-width: 0; }
+.fuel-log-item .fl-brand { font-weight: 700; }
+.fuel-log-item .fl-when { display: flex; align-items: center; gap: var(--s2); margin-top: 3px; color: var(--ink-3); font-size: var(--fs-sm); }
+.fuel-log-item .fl-when span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fuel-log-item .fl-amount { font-weight: 800; font-size: var(--fs-h); letter-spacing: -.02em; white-space: nowrap; }
+
+/* Pager. */
+.pager { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); margin-top: var(--s5); }
+.pager .pager-label { color: var(--ink-3); font-size: var(--fs-sm); font-weight: 600; }
+.pager .btn:disabled { opacity: .4; pointer-events: none; }
+
+@container app (min-width: 720px) {
+  .fuel-analytics { grid-template-columns: repeat(4, 1fr); }
+}
+
+/* ============================================================
    USAGE STATS
    ============================================================ */
 .stat-list { display: flex; flex-direction: column; gap: var(--s5); }
@@ -742,6 +865,63 @@ textarea.input { height: auto; min-height: 84px; padding: var(--s3) var(--s4); r
 .acct-item svg { width: 18px; height: 18px; color: var(--ink-2); flex: none; }
 .acct-item.danger { color: var(--danger); }
 .acct-item.danger svg { color: var(--danger); }
+
+/* ============================================================
+   POLLS — nav bell + the poll center
+   ============================================================ */
+.poll-bell { position: relative; }
+.poll-badge {
+  position: absolute; top: 3px; right: 3px;
+  min-width: 17px; height: 17px; padding: 0 4px; box-sizing: border-box;
+  border-radius: var(--r-pill); background: var(--accent); color: #fff;
+  font-size: 10px; font-weight: 800; line-height: 15px; text-align: center;
+  box-shadow: 0 0 0 2px var(--surface);
+}
+
+.poll-list { display: flex; flex-direction: column; gap: var(--s4); }
+.poll-empty {
+  display: flex; flex-direction: column; align-items: center; gap: var(--s3);
+  text-align: center; color: var(--ink-3); padding: var(--s7) var(--s4);
+}
+.poll-empty svg { width: 34px; height: 34px; color: var(--accent); }
+
+.poll-item {
+  display: flex; flex-direction: column; gap: var(--s3);
+  border: 1px solid var(--border); border-radius: var(--r-lg);
+  padding: var(--s4); background: var(--surface);
+}
+.poll-top { display: flex; align-items: center; gap: var(--s3); }
+.poll-who { min-width: 0; }
+.poll-who .nm { display: flex; align-items: center; gap: var(--s2); font-weight: 700; font-size: var(--fs-h); }
+.poll-who .when { color: var(--ink-2); font-size: var(--fs-sm); margin-top: 1px; }
+.poll-note { color: var(--ink-2); font-size: var(--fs-sm); line-height: 1.4; }
+
+.poll-meta { display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; font-size: var(--fs-sm); }
+.poll-deadline { display: inline-flex; align-items: center; gap: var(--s1); font-weight: 700; color: var(--accent); }
+.poll-deadline svg { width: 15px; height: 15px; }
+
+.poll-tally { display: flex; flex-wrap: wrap; gap: var(--s2); }
+.tally-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 9px 3px 3px; border-radius: var(--r-pill);
+  font-size: var(--fs-sm); font-weight: 600; color: var(--ink-2);
+  background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--border);
+}
+.tally-chip svg { width: 14px; height: 14px; }
+.tally-chip.yes { color: var(--free); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 42%, transparent); }
+.tally-chip.no { color: var(--danger); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--danger) 42%, transparent); }
+.tally-chip .opt { color: var(--ink-3); font-weight: 600; font-size: var(--fs-micro); text-transform: uppercase; letter-spacing: .03em; }
+
+.poll-foot { display: flex; gap: var(--s3); margin-top: var(--s1); }
+.btn-vote { flex: 1; }
+.btn-vote.yes { background: var(--accent); color: #fff; border-color: transparent; }
+.btn-vote.yes:hover { background: color-mix(in srgb, var(--accent) 88%, #000); color: #fff; }
+.btn-vote.no { background: var(--danger-bg); color: var(--danger); border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent); }
+.btn-vote.no:hover { background: color-mix(in srgb, var(--danger) 16%, var(--surface)); }
+.btn-vote.on { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px color-mix(in srgb, currentColor 45%, transparent); }
+
+.poll-admin { display: flex; align-items: center; gap: var(--s2); }
+.poll-admin .faint { font-size: var(--fs-micro); font-weight: 800; text-transform: uppercase; letter-spacing: var(--tracking-label); color: var(--ink-3); }
 
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {

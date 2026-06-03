@@ -5,9 +5,11 @@ import { bookingKeys } from "./queries";
 
 /**
  * Live sync. Subscribes to Postgres changes on the booking tables and
- * invalidates the bookings query so every phone in the household updates the
- * moment someone books, edits, or cancels. RLS still applies to realtime
- * payloads, so a client only hears about its own household.
+ * invalidates the affected queries so every phone in the household updates the
+ * moment someone books, votes, edits, or cancels. A booking or vote change can
+ * flip a proposal between pending and confirmed, so both the bookings and polls
+ * queries are refreshed together. RLS still applies to realtime payloads, so a
+ * client only hears about its own household.
  *
  * Mount once, high in the authenticated tree (the app shell).
  */
@@ -15,8 +17,13 @@ export function useBookingsRealtime() {
   const qc = useQueryClient();
 
   useEffect(() => {
-    const invalidate = () => {
+    /**
+     * A booking/rider/vote change can move a row between the bookings
+     * (confirmed) and polls (pending) lists, so refresh both.
+     */
+    const invalidateBookingsAndPolls = () => {
       void qc.invalidateQueries({ queryKey: bookingKeys.bookings });
+      void qc.invalidateQueries({ queryKey: bookingKeys.polls });
     };
 
     const channel = supabase
@@ -24,12 +31,31 @@ export function useBookingsRealtime() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "bookings" },
-        invalidate,
+        invalidateBookingsAndPolls,
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "booking_riders" },
-        invalidate,
+        invalidateBookingsAndPolls,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "booking_votes" },
+        invalidateBookingsAndPolls,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "vehicles" },
+        () => {
+          void qc.invalidateQueries({ queryKey: bookingKeys.vehicle });
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "fuel_logs" },
+        () => {
+          void qc.invalidateQueries({ queryKey: bookingKeys.fuelLogs });
+        },
       )
       .subscribe();
 
