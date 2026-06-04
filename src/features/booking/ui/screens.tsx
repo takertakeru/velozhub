@@ -632,30 +632,171 @@ function RiderToggle({
   );
 }
 
-/** Booking detail sheet; the owner gets edit and two-step cancel. */
+/**
+ * Booking detail sheet; the owner gets edit and two-step cancel. A member who
+ * does not own a future booking instead gets a give-way ask (request the holder
+ * to yield the slot), with a waiting/withdraw state once an ask is in flight.
+ */
 export function DetailSheet({
   wide,
   booking,
   onEdit,
   onCancel,
   onClose,
+  onAskGiveway,
+  onWithdrawGiveway,
+  pendingGivewayId,
 }: {
   wide: boolean;
   booking: BookingView;
   onEdit: (id: string) => void;
   onCancel: (id: string) => void;
   onClose: () => void;
+  onAskGiveway?: (bookingId: string, reason: string) => void;
+  onWithdrawGiveway?: (requestId: string) => void;
+  /** Id of my open ask for this booking, if any; shows the waiting state. */
+  pendingGivewayId?: string | null;
 }) {
   const [isConfirming, setIsConfirming] = useState(false);
+  const [isAsking, setIsAsking] = useState(false);
+  const [askReason, setAskReason] = useState("");
   const p = usePerson(booking.person);
   const isMine = booking.person === useMeId();
   const isAdmin = useIsAdmin();
   // The owner manages their own trip; an admin can manage anyone's (RLS allows
   // this too, so the DB agrees with the UI).
   const canManage = isMine || isAdmin;
+  // Anyone who does not own the booking can ask the holder to give way (admins
+  // included: they get the ask as well as their override controls below). Only
+  // for a future booking, since asking for a past slot is pointless and the
+  // server rejects it anyway.
+  const canAsk =
+    Boolean(onAskGiveway) && !isMine && booking.date >= todayManilaISO();
   const when = booking.allDay
     ? "All day"
     : `${fmtTime(booking.start)} to ${fmtTime(booking.end)}`;
+  // Non-redundant date: only prepend the relative label for an actual relative
+  // day (Today/Tomorrow/Yesterday); otherwise fullDate already names the day,
+  // so "Saturday, Sat, Jun 6" becomes a clean "Sat, Jun 6".
+  const rel = relDayLabel(booking.date);
+  const isRelativeDay =
+    rel === "Today" || rel === "Tomorrow" || rel === "Yesterday";
+  const dateText = isRelativeDay
+    ? `${rel} · ${fullDate(booking.date)}`
+    : fullDate(booking.date);
+  const durationMins =
+    !booking.allDay && booking.start && booking.end
+      ? minsOf(booking.end) - minsOf(booking.start)
+      : 0;
+  const durationLabel = durationMins > 0 ? fmtDuration(durationMins) : null;
+
+  // The footer's primary action belongs to the owner (manage their trip) or, for
+  // anyone else, the give-way ask, which steps through ask -> waiting. An admin's
+  // override controls live in a separate section in the body, not here.
+  let footer: React.ReactNode = null;
+
+  if (isMine) {
+    footer = (
+      <div className="sheet-foot">
+        {isConfirming ? (
+          <>
+            <button
+              className="btn btn-ghost"
+              style={{ flex: "0 0 auto" }}
+              onClick={() => { setIsConfirming(false); }}
+            >
+              Keep
+            </button>
+            <button
+              className="btn btn-danger btn-block"
+              onClick={() => { onCancel(booking.id); }}
+            >
+              <Ic.Trash /> Yes, cancel this trip
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              className="btn btn-danger"
+              style={{ flex: "0 0 auto" }}
+              onClick={() => { setIsConfirming(true); }}
+            >
+              <Ic.Trash /> Cancel trip
+            </button>
+            <button
+              className="btn btn-primary btn-block"
+              onClick={() => { onEdit(booking.id); }}
+            >
+              <Ic.Edit /> Edit
+            </button>
+          </>
+        )}
+      </div>
+    );
+  } else if (canAsk && pendingGivewayId) {
+    footer = (
+      <div className="sheet-foot giveway-foot">
+        <span className="giveway-wait">
+          <Ic.Clock aria-hidden="true" />
+          <span>
+            Waiting for <span className="nm">{p.name}</span>
+          </span>
+        </span>
+        <button
+          className="btn btn-ghost btn-sm"
+          style={{ flex: "0 0 auto" }}
+          onClick={() => { onWithdrawGiveway?.(pendingGivewayId); }}
+        >
+          Withdraw
+        </button>
+      </div>
+    );
+  } else if (canAsk && isAsking) {
+    footer = (
+      <div className="sheet-foot" style={{ display: "block" }}>
+        <div className="poll-reason">
+          <label htmlFor={`ask-${booking.id}`}>
+            Reason for asking <span className="faint">(optional)</span>
+          </label>
+          <textarea
+            id={`ask-${booking.id}`}
+            className="input"
+            placeholder="Let them know why, e.g. I have a doctor's appointment."
+            value={askReason}
+            onChange={(e) => { setAskReason(e.target.value); }}
+          />
+          <div className="poll-foot">
+            <button
+              className="btn"
+              onClick={() => {
+                setIsAsking(false);
+                setAskReason("");
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              className="btn btn-primary"
+              onClick={() => { onAskGiveway?.(booking.id, askReason); }}
+            >
+              <Ic.Car /> Send request
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  } else if (canAsk) {
+    footer = (
+      <div className="sheet-foot">
+        <button
+          className="btn btn-primary btn-block"
+          onClick={() => { setIsAsking(true); }}
+        >
+          <Ic.Car /> Ask {p.name} to give way
+        </button>
+      </div>
+    );
+  }
 
   return (
     // eslint-disable-next-line jsx-a11y/no-static-element-interactions
@@ -674,101 +815,119 @@ export function DetailSheet({
           </button>
         </div>
         <div className="sheet-body">
-          <div className="detail-hero">
+          <div
+            className="detail-hero"
+            style={{ "--pc": p.color } as React.CSSProperties}
+          >
             <Avatar pid={booking.person} size="lg" />
-            <div>
+            <div className="detail-hero-info">
               <div className="name">
                 {p.name}
-                {isMine && (
-                  <span className="you-tag" style={{ marginLeft: 8 }}>
-                    You
-                  </span>
-                )}
+                {isMine && <span className="you-tag">You</span>}
               </div>
-              <div className="when">
-                {relDayLabel(booking.date)}, {fullDate(booking.date)}
-              </div>
+              <div className="when">{dateText}</div>
             </div>
           </div>
 
-          <div className="kv">
-            <div className="k">When</div>
-            <div
-              className="v"
-              style={{ display: "flex", alignItems: "center", gap: 8 }}
-            >
-              {booking.allDay ? <AllDayTag /> : <b className="tnum">{when}</b>}
-            </div>
-          </div>
-          <div className="kv">
-            <div className="k">Riders</div>
-            <div className="v">
-              {booking.riders.length > 0 ? (
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  {booking.riders.map((r) => (
-                    <PersonChip key={r} pid={r} />
-                  ))}
+          <div className="detail-rows">
+            <div className="drow">
+              <span className="drow-ic">
+                <Ic.Clock />
+              </span>
+              <div className="drow-main">
+                <div className="drow-k">When</div>
+                <div className="drow-v">
+                  {booking.allDay ? (
+                    <AllDayTag />
+                  ) : (
+                    <>
+                      <b className="tnum">{when}</b>
+                      {durationLabel && (
+                        <span className="drow-sub"> · {durationLabel}</span>
+                      )}
+                    </>
+                  )}
                 </div>
-              ) : (
-                <span className="faint">Solo trip</span>
-              )}
+              </div>
             </div>
-          </div>
-          <div className="kv">
-            <div className="k">Note</div>
-            <div className="v">
-              {booking.note || <span className="faint">No note</span>}
+
+            <div className="drow">
+              <span className="drow-ic">
+                <Ic.Car />
+              </span>
+              <div className="drow-main">
+                <div className="drow-k">Riders</div>
+                <div className="drow-v">
+                  {booking.riders.length > 0 ? (
+                    <div className="rider-chips">
+                      {booking.riders.map((r) => (
+                        <PersonChip key={r} pid={r} />
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="faint">Solo trip</span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="drow">
+              <span className="drow-ic">
+                <Ic.Edit />
+              </span>
+              <div className="drow-main">
+                <div className="drow-k">Note</div>
+                <div className="drow-v">
+                  {booking.note || <span className="faint">No note</span>}
+                </div>
+              </div>
             </div>
           </div>
 
-          {!isMine && isAdmin && (
-            <div className="lock-note">
-              <Ic.Lock /> {p.name}&apos;s booking. You can manage it as an admin.
-            </div>
-          )}
           {!canManage && (
             <div className="lock-note">
-              <Ic.Lock /> Only {p.name} can edit or cancel this booking.
+              <Ic.Lock /> Only {p.name} can edit this trip. Ask them to give way to
+              take the slot.
+            </div>
+          )}
+          {!isMine && isAdmin && (
+            <div className="detail-admin">
+              <span className="lbl">Admin</span>
+              {isConfirming ? (
+                <div className="row">
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => { setIsConfirming(false); }}
+                  >
+                    Keep
+                  </button>
+                  <button
+                    className="btn btn-danger btn-sm"
+                    onClick={() => { onCancel(booking.id); }}
+                  >
+                    <Ic.Trash /> Yes, cancel
+                  </button>
+                </div>
+              ) : (
+                <div className="row">
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => { onEdit(booking.id); }}
+                  >
+                    <Ic.Edit /> Edit
+                  </button>
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => { setIsConfirming(true); }}
+                  >
+                    <Ic.Trash /> Cancel
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
-        {canManage && (
-          <div className="sheet-foot">
-            {isConfirming ? (
-              <>
-                <button
-                  className="btn btn-ghost"
-                  style={{ flex: "0 0 auto" }}
-                  onClick={() => { setIsConfirming(false); }}
-                >
-                  Keep
-                </button>
-                <button
-                  className="btn btn-danger btn-block"
-                  onClick={() => { onCancel(booking.id); }}
-                >
-                  <Ic.Trash /> Yes, cancel this trip
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  className="btn btn-danger"
-                  style={{ flex: "0 0 auto" }}
-                  onClick={() => { setIsConfirming(true); }}
-                >
-                  <Ic.Trash /> Cancel trip
-                </button>
-                <button
-                  className="btn btn-primary btn-block"
-                  onClick={() => { onEdit(booking.id); }}
-                >
-                  <Ic.Edit /> Edit
-                </button>
-              </>
-            )}
-          </div>
-        )}
+        {footer}
       </div>
     </div>
   );

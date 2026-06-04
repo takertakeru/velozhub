@@ -13,6 +13,10 @@ export const bookingKeys = {
   vehicle: ["vehicle"] as const,
   bookings: ["bookings"] as const,
   polls: ["polls"] as const,
+  rejections: ["rejections"] as const,
+  givewayInbox: ["giveway-inbox"] as const,
+  givewayResults: ["giveway-results"] as const,
+  givewayPending: ["giveway-pending"] as const,
   fuelLogs: ["fuel-logs"] as const,
 };
 

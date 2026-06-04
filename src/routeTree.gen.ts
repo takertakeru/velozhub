@@ -14,7 +14,6 @@ import { Route as rootRoute } from './routes/__root'
 import { Route as PreviewImport } from './routes/preview'
 import { Route as LogoutImport } from './routes/logout'
 import { Route as LayoutPreviewImport } from './routes/layout-preview'
-import { Route as HomeImport } from './routes/home'
 import { Route as unauthenticatedRouteImport } from './routes/(unauthenticated)/route'
 import { Route as IndexImport } from './routes/index'
 import { Route as unauthenticatedResetPasswordImport } from './routes/(unauthenticated)/reset-password'
@@ -40,12 +39,6 @@ const LogoutRoute = LogoutImport.update({
 const LayoutPreviewRoute = LayoutPreviewImport.update({
   id: '/layout-preview',
   path: '/layout-preview',
-  getParentRoute: () => rootRoute,
-} as any)
-
-const HomeRoute = HomeImport.update({
-  id: '/home',
-  path: '/home',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -108,13 +101,6 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof unauthenticatedRouteImport
-      parentRoute: typeof rootRoute
-    }
-    '/home': {
-      id: '/home'
-      path: '/home'
-      fullPath: '/home'
-      preLoaderRoute: typeof HomeImport
       parentRoute: typeof rootRoute
     }
     '/layout-preview': {
@@ -197,7 +183,6 @@ const unauthenticatedRouteRouteWithChildren =
 
 export interface FileRoutesByFullPath {
   '/': typeof unauthenticatedRouteRouteWithChildren
-  '/home': typeof HomeRoute
   '/layout-preview': typeof LayoutPreviewRoute
   '/logout': typeof LogoutRoute
   '/preview': typeof PreviewRoute
@@ -210,7 +195,6 @@ export interface FileRoutesByFullPath {
 
 export interface FileRoutesByTo {
   '/': typeof unauthenticatedRouteRouteWithChildren
-  '/home': typeof HomeRoute
   '/layout-preview': typeof LayoutPreviewRoute
   '/logout': typeof LogoutRoute
   '/preview': typeof PreviewRoute
@@ -225,7 +209,6 @@ export interface FileRoutesById {
   __root__: typeof rootRoute
   '/': typeof IndexRoute
   '/(unauthenticated)': typeof unauthenticatedRouteRouteWithChildren
-  '/home': typeof HomeRoute
   '/layout-preview': typeof LayoutPreviewRoute
   '/logout': typeof LogoutRoute
   '/preview': typeof PreviewRoute
@@ -240,7 +223,6 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/home'
     | '/layout-preview'
     | '/logout'
     | '/preview'
@@ -252,7 +234,6 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/home'
     | '/layout-preview'
     | '/logout'
     | '/preview'
@@ -265,7 +246,6 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/(unauthenticated)'
-    | '/home'
     | '/layout-preview'
     | '/logout'
     | '/preview'
@@ -280,7 +260,6 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   unauthenticatedRouteRoute: typeof unauthenticatedRouteRouteWithChildren
-  HomeRoute: typeof HomeRoute
   LayoutPreviewRoute: typeof LayoutPreviewRoute
   LogoutRoute: typeof LogoutRoute
   PreviewRoute: typeof PreviewRoute
@@ -290,7 +269,6 @@ export interface RootRouteChildren {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   unauthenticatedRouteRoute: unauthenticatedRouteRouteWithChildren,
-  HomeRoute: HomeRoute,
   LayoutPreviewRoute: LayoutPreviewRoute,
   LogoutRoute: LogoutRoute,
   PreviewRoute: PreviewRoute,
@@ -309,7 +287,6 @@ export const routeTree = rootRoute
       "children": [
         "/",
         "/(unauthenticated)",
-        "/home",
         "/layout-preview",
         "/logout",
         "/preview",
@@ -327,9 +304,6 @@ export const routeTree = rootRoute
         "/(unauthenticated)/register",
         "/(unauthenticated)/reset-password"
       ]
-    },
-    "/home": {
-      "filePath": "home.tsx"
     },
     "/layout-preview": {
       "filePath": "layout-preview.tsx"

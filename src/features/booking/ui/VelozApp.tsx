@@ -23,6 +23,15 @@ import {
 } from "@/components/veloz/brand";
 import * as Ic from "@/components/veloz/icons";
 import type { Nudge } from "@/libs/supabase/types";
+import {
+  useAcknowledgeGiveway,
+  useClaimGiveway,
+  useGivewayInbox,
+  useMyGivewayResults,
+  useMyPendingGiveways,
+  useRequestGiveway,
+  useWithdrawGiveway,
+} from "../giveway";
 import { bookingsToICS, downloadICS } from "../ics";
 import {
   useCancelBooking,
@@ -30,7 +39,12 @@ import {
   useUpdateBooking,
 } from "../mutations";
 import { useNudgeInbox, useSendNudge } from "../nudges";
-import { usePollResolver, usePolls } from "../polls";
+import {
+  useAcknowledgeRejection,
+  useMyRejections,
+  usePollResolver,
+  usePolls,
+} from "../polls";
 import {
   type PeopleData,
   useBookings,
@@ -40,10 +54,18 @@ import {
 } from "../queries";
 import { useBookingsRealtime } from "../realtime";
 import { todayManilaISO } from "../time";
-import type { BookingDraft, BookingView } from "../types";
+import type {
+  BookingDraft,
+  BookingView,
+  GivewayView,
+  RejectionView,
+} from "../types";
 import { Avatar } from "./components";
 import { BookingUiProvider, personOf, useBookingUi } from "./context";
+import { DeclineNotice } from "./DeclineNotice";
 import { FuelHistoryScreen } from "./FuelHistoryScreen";
+import { GivewayCenter } from "./GivewayCenter";
+import { GivewayResult } from "./GivewayResult";
 import { PollCenter } from "./PollCenter";
 import {
   BookingForm,
@@ -54,7 +76,10 @@ import {
 } from "./screens";
 
 type Screen = "home" | "week" | "stats" | "fuel";
-type FormState = { mode: "new" } | { mode: "edit"; id: string } | null;
+type FormState =
+  | { mode: "new"; draft?: BookingDraft }
+  | { mode: "edit"; id: string }
+  | null;
 type Theme = "light" | "dark";
 
 /** Surface a mutation failure to the user as a toast notification. */
@@ -263,6 +288,63 @@ function PollBell({ count, onClick }: { count: number; onClick: () => void }) {
   );
 }
 
+/**
+ * Nav button that opens the give-way center. The badge counts asks awaiting the
+ * signed-in user's answer; it shows with no badge when only their own outgoing
+ * asks are pending, so they can still open the center to track or withdraw them.
+ */
+function GivewayBell({
+  count,
+  onClick,
+}: {
+  count: number;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className="icon-btn poll-bell"
+      aria-label={
+        count > 0
+          ? `Give-way requests, ${count} awaiting your answer`
+          : "Give-way requests"
+      }
+      onClick={onClick}
+    >
+      <Ic.Car />
+      {count > 0 && (
+        <span className="poll-badge">{count > 9 ? "9+" : count}</span>
+      )}
+    </button>
+  );
+}
+
+/**
+ * A nav-styled row (desktop sidebar) that opens an alert center. Always shown so
+ * the approval / give-way hubs are reachable even when empty; a count badge
+ * appears on the right only when something is pending.
+ */
+function NavAlert({
+  icon: Icon,
+  label,
+  count,
+  onClick,
+}: {
+  icon: typeof Ic.Home;
+  label: string;
+  count: number;
+  onClick: () => void;
+}) {
+  return (
+    <button type="button" className="nav-link" onClick={onClick}>
+      <Icon /> {label}
+      {count > 0 && (
+        <span className="nav-badge">{count > 9 ? "9+" : count}</span>
+      )}
+    </button>
+  );
+}
+
 function Shell({
   me,
   vehicleId,
@@ -288,6 +370,63 @@ function Shell({
   const updateM = useUpdateBooking();
   const cancelM = useCancelBooking();
   const sendNudgeM = useSendNudge();
+  const acknowledgeRejectionM = useAcknowledgeRejection();
+
+  // The proposer's unseen declined bookings; show the newest as a notice modal.
+  // Track the id we just acted on so the modal closes instantly, before the
+  // acknowledge round-trips and the query drops it.
+  const rejectionsQ = useMyRejections(me);
+  const [dismissedRejectionId, setDismissedRejectionId] = useState<
+    string | null
+  >(null);
+  const pendingRejection = rejectionsQ.data?.[0] ?? null;
+  const rejection =
+    pendingRejection && pendingRejection.id !== dismissedRejectionId
+      ? pendingRejection
+      : null;
+
+  // Give-way: asks aimed at me (decide), my asks that resolved (claim/see), and
+  // my open asks (so the detail sheet shows "waiting" on a slot already in flight).
+  const givewayInboxQ = useGivewayInbox(me);
+  const givewayResultsQ = useMyGivewayResults(me);
+  const myPendingGivewayQ = useMyPendingGiveways(me);
+  const requestGivewayM = useRequestGiveway();
+  const claimGivewayM = useClaimGiveway();
+  const withdrawGivewayM = useWithdrawGiveway();
+  const acknowledgeGivewayM = useAcknowledgeGiveway();
+
+  // Asks aimed at me, shown in the give-way center (a scrollable list).
+  // Asks aimed at me (to answer) and asks I sent and am waiting on. Both feed the
+  // give-way center; the outgoing list also drives the detail sheet's waiting
+  // state and the bell's presence when nothing needs my answer.
+  const givewayInbox = useMemo(
+    () => givewayInboxQ.data ?? [],
+    [givewayInboxQ.data],
+  );
+  const myPendingGiveways = useMemo(
+    () => myPendingGivewayQ.data ?? [],
+    [myPendingGivewayQ.data],
+  );
+
+  const [dismissedResultId, setDismissedResultId] = useState<string | null>(
+    null,
+  );
+  const pendingGivewayResult = givewayResultsQ.data?.[0] ?? null;
+  const givewayResult =
+    pendingGivewayResult && pendingGivewayResult.id !== dismissedResultId
+      ? pendingGivewayResult
+      : null;
+
+  // bookingId -> my open ask's id, for the detail sheet's waiting state.
+  const pendingGivewayByBooking = useMemo(() => {
+    const map = new Map<string, string>();
+
+    for (const g of myPendingGiveways) {
+      map.set(g.bookingId, g.id);
+    }
+
+    return map;
+  }, [myPendingGiveways]);
 
   // Open booking polls and how many still await this user's vote.
   const pollsQ = usePolls();
@@ -320,11 +459,35 @@ function Shell({
     setIsPollsOpen(false);
   };
 
+  const [isGivewayOpen, setIsGivewayOpen] = useState(false);
+  // Same minimize-until-cleared behaviour as the poll center, keyed on the count
+  // of open asks aimed at this holder; a fresh ask pops it open again, and the
+  // give-way bell reopens it after a minimize.
+  const givewayDismissedRef = useRef(false);
+
+  useEffect(() => {
+    if (givewayInbox.length === 0) {
+      givewayDismissedRef.current = false;
+
+      return;
+    }
+
+    if (!givewayDismissedRef.current) {
+      setIsGivewayOpen(true);
+    }
+  }, [givewayInbox.length]);
+
+  const openGiveways = () => { setIsGivewayOpen(true); };
+  const minimizeGiveways = () => {
+    givewayDismissedRef.current = true;
+    setIsGivewayOpen(false);
+  };
+
   /**
-   * Manual data refresh. In an installed PWA there is no browser reload, so this
-   * re-fetches every active query (bookings, profiles, vehicle, me). The refetch
-   * is usually near-instant, so we hold the spinner for one full rotation (the
-   * animation is 0.8s) so it ends smoothly instead of snapping mid-spin.
+   * Manual data refresh. Re-fetches every active query (bookings, profiles,
+   * vehicle, me) in place without reloading the page. The refetch is usually
+   * near-instant, so we hold the loader for one full spin (the animation is
+   * 0.8s) so it ends smoothly instead of flashing.
    */
   const refresh = () => {
     setIsRefreshing(true);
@@ -402,6 +565,11 @@ function Shell({
       }
     }
 
+    // A "Book again" from the decline notice seeds the new-booking form.
+    if (form?.mode === "new" && form.draft) {
+      return form.draft;
+    }
+
     return newDraft();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form, bookings, me]);
@@ -431,6 +599,72 @@ function Shell({
       onSuccess: () => { setDetailId(null); },
       onError: (err) => { notifyError(err, "Could not cancel the booking."); },
     });
+  };
+
+  /**
+   * Decline notice: acknowledge so it stops popping. "Book again" also reopens
+   * the booking form prefilled with the declined slot (sans the old id).
+   */
+  const dismissRejection = (r: RejectionView) => {
+    setDismissedRejectionId(r.id);
+    acknowledgeRejectionM.mutate(r.id);
+  };
+
+  const rebookRejection = (r: RejectionView) => {
+    setDismissedRejectionId(r.id);
+    acknowledgeRejectionM.mutate(r.id);
+    setForm({
+      mode: "new",
+      draft: {
+        person: me,
+        date: r.date,
+        allDay: r.allDay,
+        start: r.start || "16:00",
+        end: r.end || "18:00",
+        riders: [...r.riders],
+        note: r.note,
+      },
+    });
+  };
+
+  /** Ask the holder of someone else's booking to give way (from the detail sheet). */
+  const askGiveway = (bookingId: string, reason: string) => {
+    requestGivewayM.mutate(
+      { bookingId, reason: reason.trim() || undefined },
+      {
+        onSuccess: () => {
+          setDetailId(null);
+          toaster("Asked them to give way.");
+        },
+        onError: (err) => { notifyError(err, "Could not send the request."); },
+      },
+    );
+  };
+
+  const withdrawGiveway = (requestId: string) => {
+    withdrawGivewayM.mutate(requestId, {
+      onSuccess: () => { setDetailId(null); },
+      onError: (err) => { notifyError(err, "Could not withdraw the request."); },
+    });
+  };
+
+  /** Asker claims a freed slot: books it confirmed-directly at the agreed time. */
+  const claimGiveway = (g: GivewayView) => {
+    claimGivewayM.mutate(
+      { requestId: g.id },
+      {
+        onSuccess: () => {
+          setDismissedResultId(g.id);
+          toaster("The slot is yours.");
+        },
+        onError: (err) => { notifyError(err, "Could not claim the slot."); },
+      },
+    );
+  };
+
+  const dismissGivewayResult = (g: GivewayView) => {
+    setDismissedResultId(g.id);
+    acknowledgeGivewayM.mutate(g.id);
   };
 
   const navItems: Array<{ id: Screen; label: string; icon: typeof Ic.Home }> = [
@@ -526,9 +760,6 @@ function Shell({
             >
               <Ic.Refresh className={isRefreshing ? "spin" : undefined} />
             </button>
-            {polls.length > 0 && (
-              <PollBell count={owedVotes} onClick={openPolls} />
-            )}
           </div>
           {navItems.map((n) =>
             { return <button
@@ -539,6 +770,19 @@ function Shell({
               <n.icon /> {n.label}
             </button> }
           )}
+          {/* Always-visible alert rows: open the approval / give-way centers. */}
+          <NavAlert
+            icon={Ic.Bell}
+            label="Approvals"
+            count={owedVotes}
+            onClick={openPolls}
+          />
+          <NavAlert
+            icon={Ic.Car}
+            label="Give-way"
+            count={givewayInbox.length}
+            onClick={openGiveways}
+          />
           <button className="btn btn-primary new-btn" onClick={openNew}>
             <Ic.Plus /> New booking
           </button>
@@ -565,9 +809,8 @@ function Shell({
             </button>
             <div className="spacer" />
             <div className="topbar-actions">
-              {polls.length > 0 && (
-                <PollBell count={owedVotes} onClick={openPolls} />
-              )}
+              <PollBell count={owedVotes} onClick={openPolls} />
+              <GivewayBell count={givewayInbox.length} onClick={openGiveways} />
               <button
                 type="button"
                 className="icon-btn"
@@ -575,15 +818,6 @@ function Shell({
                 onClick={refresh}
               >
                 <Ic.Refresh className={isRefreshing ? "spin" : undefined} />
-              </button>
-              <button
-                type="button"
-                className={screen === "stats" ? "icon-btn active" : "icon-btn"}
-                aria-label="Usage"
-                aria-pressed={screen === "stats"}
-                onClick={() => { setScreen("stats"); }}
-              >
-                <Ic.Chart />
               </button>
             </div>
             <AccountMenu
@@ -596,15 +830,29 @@ function Shell({
             />
           </div>
 
-          <div className="scrollarea">{screenView}</div>
+          <div className="scrollarea">
+            {screenView}
+            {isRefreshing && (
+              <div className="refresh-overlay" role="status" aria-live="polite">
+                <Ic.Refresh className="spin" />
+                <span>Refreshing…</span>
+              </div>
+            )}
+          </div>
 
-          {/* Phone tab bar */}
+          {/* Phone tab bar: every primary screen, with New as the center FAB. */}
           <nav className="tabbar">
             <button
               className={`tab${  screen === "home" ? " active" : ""}`}
               onClick={() => { setScreen("home"); }}
             >
               <Ic.Home /> Home
+            </button>
+            <button
+              className={`tab${  screen === "week" ? " active" : ""}`}
+              onClick={() => { setScreen("week"); }}
+            >
+              <Ic.Calendar /> Week
             </button>
             <button className="tab fab" onClick={openNew}>
               <span className="fab-circle">
@@ -613,10 +861,16 @@ function Shell({
               <span>New</span>
             </button>
             <button
-              className={`tab${  screen === "week" ? " active" : ""}`}
-              onClick={() => { setScreen("week"); }}
+              className={`tab${  screen === "fuel" ? " active" : ""}`}
+              onClick={() => { setScreen("fuel"); }}
             >
-              <Ic.Calendar /> Week
+              <Ic.Fuel /> Fuel
+            </button>
+            <button
+              className={`tab${  screen === "stats" ? " active" : ""}`}
+              onClick={() => { setScreen("stats"); }}
+            >
+              <Ic.Chart /> Usage
             </button>
           </nav>
         </div>
@@ -625,9 +879,12 @@ function Shell({
           <DetailSheet
             wide={isWide}
             booking={detail}
+            pendingGivewayId={pendingGivewayByBooking.get(detail.id) ?? null}
             onEdit={openEdit}
             onCancel={cancelBooking}
             onClose={() => { setDetailId(null); }}
+            onAskGiveway={askGiveway}
+            onWithdrawGiveway={withdrawGiveway}
           />
         )}
         {form && (
@@ -640,8 +897,33 @@ function Shell({
             onClose={() => { setForm(null); }}
           />
         )}
-        {isPollsOpen && polls.length > 0 && (
+        {isPollsOpen && (
           <PollCenter wide={isWide} polls={polls} onClose={minimizePolls} />
+        )}
+        {rejection && !form && (
+          <DeclineNotice
+            wide={isWide}
+            rejection={rejection}
+            onDismiss={() => { dismissRejection(rejection); }}
+            onRebook={() => { rebookRejection(rejection); }}
+          />
+        )}
+        {givewayResult && !form && !rejection && (
+          <GivewayResult
+            wide={isWide}
+            result={givewayResult}
+            busy={claimGivewayM.isPending}
+            onClaim={() => { claimGiveway(givewayResult); }}
+            onDismiss={() => { dismissGivewayResult(givewayResult); }}
+          />
+        )}
+        {isGivewayOpen && (
+          <GivewayCenter
+            wide={isWide}
+            incoming={givewayInbox}
+            outgoing={myPendingGiveways}
+            onClose={minimizeGiveways}
+          />
         )}
       </div>
     </div>

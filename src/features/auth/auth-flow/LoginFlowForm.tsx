@@ -1,5 +1,5 @@
 import "@/components/veloz/veloz.css";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -37,9 +37,48 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
+/** Nudge a freshly focused field above the keyboard once it has animated in. */
+function scrollFieldIntoView(target: HTMLElement) {
+  window.setTimeout(() => {
+    target.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, 300);
+}
+
 export function LoginFlowForm() {
   const navigate = useNavigate();
   const [theme, setTheme] = useState<VelozTheme>(initialVelozTheme);
+  const surfaceRef = useRef<HTMLDivElement>(null);
+
+  /**
+   * On iOS the on-screen keyboard overlays the page instead of resizing it, so
+   * `100dvh` stays full height and the scroll container never gets short enough
+   * to scroll the focused field above the keyboard. We track the real visible
+   * height with the visualViewport API and pin the surface to it, which makes
+   * the card overflow (and therefore scroll) while the keyboard is up.
+   */
+  // eslint-disable-next-line fsecond/valid-event-listener
+  useEffect(() => {
+    const vv = window.visualViewport;
+    const el = surfaceRef.current;
+
+    if (!vv || !el) {
+      return;
+    }
+
+    const apply = () => {
+      el.style.height = `${vv.height}px`;
+    };
+
+    apply();
+    vv.addEventListener("resize", apply);
+    vv.addEventListener("scroll", apply);
+
+    return () => {
+      vv.removeEventListener("resize", apply);
+      vv.removeEventListener("scroll", apply);
+    };
+  }, []);
+
   const form = useForm<FormData>({
     defaultValues: { name: "", password: "" },
     resolver: zodResolver(schema),
@@ -84,7 +123,7 @@ export function LoginFlowForm() {
   const isLoading = form.formState.isSubmitting;
 
   return (
-    <div className="veloz surface" data-theme={theme}>
+    <div className="veloz surface" data-theme={theme} ref={surfaceRef}>
       <div className="auth-shell">
         <form className="auth-card" onSubmit={onSubmitHandler}>
           <div className="auth-top">
@@ -163,6 +202,9 @@ export function LoginFlowForm() {
               autoComplete="current-password"
               placeholder="Your password"
               {...form.register("password")}
+              onFocus={(e) => {
+                scrollFieldIntoView(e.currentTarget);
+              }}
             />
             {passwordError && <FieldError message={passwordError} />}
           </div>

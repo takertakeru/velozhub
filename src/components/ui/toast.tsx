@@ -7,7 +7,6 @@ import {
 import { WarningCircleIcon } from "@phosphor-icons/react";
 import { Banner } from "./banner";
 import { Label } from "./fieldset";
-import { Paragraph } from "./text";
 import { Content } from "./view";
 
 // export { toast as toaster };
@@ -28,9 +27,6 @@ function ToastPrimitive({ message }: { id: string | number; message: string }) {
         <Label className="align-middle font-medium" color="unset">
           {message}
         </Label>
-        <Paragraph color="inherit">
-          We couldn’t process your request. Please try again later.
-        </Paragraph>
       </Content>
     </Banner>
   );

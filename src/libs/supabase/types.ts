@@ -9,6 +9,18 @@
 
 export type ProfileRole = "member" | "admin";
 export type BookingStatus = "pending" | "confirmed" | "cancelled" | "rejected";
+/**
+ * Lifecycle of a give-way request (ask the holder to yield a confirmed slot):
+ * pending → the holder gave way ('accepted', slot now free to claim) or kept it
+ * ('declined'); 'withdrawn' once it can no longer be answered (requester pulled
+ * it, or the booking was cancelled); 'claimed' once the requester takes the slot.
+ */
+export type GivewayStatus =
+  | "pending"
+  | "accepted"
+  | "declined"
+  | "withdrawn"
+  | "claimed";
 /** Gas-station brands we track; "Others" is the catch-all for anything else. */
 export type FuelBrand =
   | "Petron"
@@ -65,6 +77,12 @@ export type Booking = {
   /** Close of the 15-minute silence window for a pending poll; null once the
    * proposal is decided. */
   poll_deadline: string | null;
+  /** Set only when a member declines the proposal: an optional free-text reason,
+   * the profile id of who declined, and whether the proposer has seen the notice
+   * yet (so it shows exactly once). All null/false otherwise. */
+  decline_reason: string | null;
+  declined_by: string | null;
+  decline_seen: boolean;
   created_at: string;
 };
 
@@ -108,6 +126,30 @@ export type Nudge = {
   created_at: string;
 };
 
+/**
+ * A request asking the current holder to give up a confirmed booking. `to_user`
+ * is the holder, `from_user` the asker; `start_at`/`end_at`/`all_day` snapshot
+ * the contested slot. `reason` is the asker's why, `response_reason` the
+ * holder's why on a decline. `seen` tracks whether the asker has seen the
+ * resolution. See `supabase/migrations/0011_giveway.sql`.
+ */
+export type GivewayRequest = {
+  id: string;
+  household_id: string;
+  booking_id: string;
+  from_user: string;
+  to_user: string;
+  start_at: string;
+  end_at: string;
+  all_day: boolean;
+  reason: string | null;
+  status: GivewayStatus;
+  response_reason: string | null;
+  seen: boolean;
+  created_at: string;
+  resolved_at: string | null;
+};
+
 type TableShape<Row, Insert, Update> = {
   Row: Row;
   Insert: Insert;
@@ -149,13 +191,23 @@ export type Database = {
         Booking,
         Omit<
           Booking,
-          "id" | "created_at" | "status" | "all_day" | "poll_deadline"
+          | "id"
+          | "created_at"
+          | "status"
+          | "all_day"
+          | "poll_deadline"
+          | "decline_reason"
+          | "declined_by"
+          | "decline_seen"
         > & {
           id?: string;
           created_at?: string;
           status?: BookingStatus;
           all_day?: boolean;
           poll_deadline?: string | null;
+          decline_reason?: string | null;
+          declined_by?: string | null;
+          decline_seen?: boolean;
         },
         Partial<Booking>
       >;
@@ -183,6 +235,21 @@ export type Database = {
         },
         Partial<Nudge>
       >;
+      giveway_requests: TableShape<
+        GivewayRequest,
+        Omit<
+          GivewayRequest,
+          "id" | "created_at" | "resolved_at" | "status" | "seen" | "all_day"
+        > & {
+          id?: string;
+          created_at?: string;
+          resolved_at?: string | null;
+          status?: GivewayStatus;
+          seen?: boolean;
+          all_day?: boolean;
+        },
+        Partial<GivewayRequest>
+      >;
     };
     Views: Record<string, never>;
     Functions: {
@@ -193,10 +260,23 @@ export type Database = {
         Returns: BookingStatus;
       };
       resolve_due_polls: { Args: Record<string, never>; Returns: undefined };
+      request_giveway: {
+        Args: { p_booking_id: string; p_reason?: string | null };
+        Returns: string;
+      };
+      respond_giveway: {
+        Args: { p_request_id: string; p_accept: boolean; p_reason?: string | null };
+        Returns: GivewayStatus;
+      };
+      claim_giveway: {
+        Args: { p_request_id: string; p_note?: string | null };
+        Returns: string;
+      };
     };
     Enums: {
       profile_role: ProfileRole;
       booking_status: BookingStatus;
+      giveway_status: GivewayStatus;
     };
     CompositeTypes: Record<string, never>;
   };
