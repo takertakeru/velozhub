@@ -186,7 +186,7 @@ function GivewayIncomingItem({ request }: { request: GivewayView }) {
           />
           <div className="poll-foot">
             <button
-              className="btn"
+              className="btn btn-ghost"
               disabled={isBusy}
               onClick={() => {
                 setIsKeeping(false);

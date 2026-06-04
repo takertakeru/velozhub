@@ -210,7 +210,7 @@ function PollItem({ poll, now }: { poll: PollView; now: number }) {
         />
         <div className="poll-foot">
           <button
-            className="btn"
+            className="btn btn-ghost"
             disabled={isBusy}
             onClick={() => {
               setIsDeclining(false);
