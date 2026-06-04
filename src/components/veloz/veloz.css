@@ -50,6 +50,13 @@
   --density: 1;               /* tweakable: multiplies vertical paddings */
   --radius-scale: 1;          /* tweakable */
 
+  /* iOS safe areas (notch / home indicator). 0 unless the viewport opts in
+     with viewport-fit=cover; used to pad the chrome and sheets below. */
+  --safe-top: env(safe-area-inset-top);
+  --safe-bottom: env(safe-area-inset-bottom);
+  --safe-left: env(safe-area-inset-left);
+  --safe-right: env(safe-area-inset-right);
+
   font-family: var(--font);
   font-size: var(--fs-body);
   line-height: var(--lh-body);
@@ -130,7 +137,7 @@
 
 .app-frame { display: flex; flex-direction: row; height: 100%; }
 .main { flex: 1; min-width: 0; display: flex; flex-direction: column; height: 100%; }
-.scrollarea { flex: 1; overflow-y: auto; overflow-x: hidden; }
+.scrollarea { flex: 1; overflow-y: auto; overflow-x: hidden; position: relative; }
 
 /* Sidebar hidden on phone */
 .sidebar { display: none; }
@@ -139,7 +146,8 @@
 .topbar {
   flex: none; z-index: 30;
   display: flex; align-items: center; gap: var(--s3);
-  padding: var(--s4) var(--s4) var(--s3);
+  padding: calc(var(--s4) + var(--safe-top)) calc(var(--s4) + var(--safe-right))
+           var(--s3) calc(var(--s4) + var(--safe-left));
   background: var(--surface);
   border-bottom: 1px solid var(--border);
 }
@@ -150,14 +158,15 @@
 .topbar-actions { display: flex; align-items: center; gap: var(--s1); }
 .topbar .me-avatar { margin-left: auto; }
 
-.content { padding: var(--s4) var(--s4) var(--s7); max-width: 720px; width: 100%; margin: 0 auto; }
+.content { padding: var(--s4) calc(var(--s4) + var(--safe-right)) var(--s7) calc(var(--s4) + var(--safe-left)); max-width: 720px; width: 100%; margin: 0 auto; }
 
 /* Bottom nav (phone) */
 .tabbar {
   flex: none; z-index: 40;
-  display: grid; grid-template-columns: repeat(3, 1fr);
+  display: grid; grid-template-columns: repeat(5, 1fr);
   align-items: center;
-  padding: var(--s2) var(--s3) calc(var(--s2) + 4px);
+  padding: var(--s2) calc(var(--s3) + var(--safe-right))
+           calc(var(--s2) + 4px + var(--safe-bottom)) calc(var(--s3) + var(--safe-left));
   background: var(--surface);
   border-top: 1px solid var(--border);
 }
@@ -165,6 +174,7 @@
   display: flex; flex-direction: column; align-items: center; gap: 3px;
   padding: var(--s2) 0; color: var(--ink-3); font-size: var(--fs-micro); font-weight: 600;
   border-radius: var(--r-md); min-height: 52px; justify-content: center;
+  white-space: nowrap;
 }
 .tab svg { width: 24px; height: 24px; }
 .tab.active { color: var(--ink); }
@@ -221,6 +231,17 @@
 
 @keyframes veloz-spin { to { transform: rotate(360deg); } }
 .spin { animation: veloz-spin .8s linear infinite; }
+
+/* Loader shown over the content area while a manual refresh re-fetches data.
+   Scoped to .scrollarea so the sidebar / topbar / tab bar stay visible. */
+.refresh-overlay {
+  position: absolute; inset: 0; z-index: 30;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--s3);
+  background: color-mix(in srgb, var(--bg) 72%, transparent);
+  backdrop-filter: blur(4px);
+  color: var(--ink-2); font-weight: 600; font-size: var(--fs-body);
+}
+.refresh-overlay svg { width: 32px; height: 32px; }
 
 /* The brand lockup doubles as a "go home" control. */
 .topbar .brand, .sidebar .brand { cursor: pointer; }
@@ -482,7 +503,9 @@ textarea.input { height: auto; min-height: 84px; padding: var(--s3) var(--s4); r
 .scrim { position: absolute; inset: 0; z-index: 50; background: color-mix(in srgb, #05070c 55%, transparent); backdrop-filter: blur(2px); display: flex; flex-direction: column; justify-content: flex-end; }
 .sheet {
   width: 100%; background: var(--surface); border-radius: var(--r-xl) var(--r-xl) 0 0;
-  box-shadow: var(--shadow-lg); max-height: 94%; display: flex; flex-direction: column;
+  box-shadow: var(--shadow-lg); display: flex; flex-direction: column;
+  /* Leave room above the status bar / notch on notched phones. */
+  max-height: calc(100% - var(--safe-top) - var(--s4));
   animation: sheetin .26s cubic-bezier(.2,.8,.2,1);
 }
 @keyframes sheetin { from { transform: translateY(100%); } }
@@ -492,15 +515,47 @@ textarea.input { height: auto; min-height: 84px; padding: var(--s3) var(--s4); r
 .sheet-title { flex: 1; min-width: 0; }
 .sheet-title p { color: var(--ink-3); font-size: var(--fs-sm); margin-top: 1px; }
 .sheet-body { padding: var(--s5) var(--s4); overflow-y: auto; }
-.sheet-foot { padding: var(--s4); border-top: 1px solid var(--border); display: flex; gap: var(--s3); background: var(--surface); }
+.sheet-foot { padding: var(--s4) var(--s4) calc(var(--s4) + var(--safe-bottom)); border-top: 1px solid var(--border); display: flex; gap: var(--s3); background: var(--surface); }
 
-/* Detail rows */
-.detail-hero { display: flex; align-items: center; gap: var(--s4); margin-bottom: var(--s5); }
-.detail-hero .name { font-size: var(--fs-title); font-weight: 800; }
-.detail-hero .when { color: var(--ink-2); margin-top: 2px; }
-.kv { display: flex; gap: var(--s4); padding: var(--s4) 0; border-top: 1px solid var(--border); }
-.kv .k { width: 96px; flex: none; color: var(--ink-3); font-weight: 700; font-size: var(--fs-sm); padding-top: 2px; }
-.kv .v { flex: 1; }
+/* Booking detail sheet */
+.detail-hero {
+  display: flex; align-items: center; gap: var(--s4);
+  margin-bottom: var(--s4); padding: var(--s4);
+  border-radius: calc(var(--r-lg) * var(--radius-scale));
+  background: color-mix(in srgb, var(--pc, var(--accent)) 8%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--pc, var(--accent)) 22%, var(--border));
+}
+.detail-hero-info { min-width: 0; }
+.detail-hero .name { display: flex; align-items: center; gap: var(--s2); font-size: var(--fs-title); font-weight: 800; letter-spacing: -.01em; }
+.detail-hero .you-tag {
+  font-size: var(--fs-micro); font-weight: 700; line-height: 1;
+  color: color-mix(in srgb, var(--pc, var(--accent)) 72%, var(--ink));
+  background: color-mix(in srgb, var(--pc, var(--accent)) var(--tint-strength), var(--tint-base));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pc, var(--accent)) 30%, transparent);
+  padding: 3px 8px; border-radius: var(--r-pill);
+}
+.detail-hero .when { color: var(--ink-2); margin-top: 3px; font-size: var(--fs-sm); font-weight: 600; }
+
+.detail-rows { display: flex; flex-direction: column; gap: var(--s2); }
+.drow {
+  display: flex; align-items: flex-start; gap: var(--s3);
+  padding: var(--s3) var(--s4);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+.drow-ic {
+  flex: none; width: 36px; height: 36px; border-radius: var(--r-md);
+  display: grid; place-items: center;
+  background: var(--surface); border: 1px solid var(--border); color: var(--ink-2);
+}
+.drow-ic svg { width: 17px; height: 17px; }
+.drow-main { min-width: 0; display: flex; flex-direction: column; gap: 2px; padding-top: 1px; }
+.drow-k { font-size: var(--fs-micro); font-weight: 700; text-transform: uppercase; letter-spacing: var(--tracking-label); color: var(--ink-3); }
+.drow-v { font-size: var(--fs-body); color: var(--ink); line-height: 1.4; }
+.drow-v b { font-weight: 800; }
+.drow-sub { color: var(--ink-3); font-weight: 600; }
+.drow .rider-chips { display: flex; gap: var(--s2); flex-wrap: wrap; margin-top: 2px; }
 .lock-note { display: flex; align-items: center; gap: var(--s2); color: var(--ink-3); font-size: var(--fs-sm); margin-top: var(--s4); }
 .lock-note svg { width: 16px; height: 16px; }
 
@@ -522,10 +577,23 @@ textarea.input { height: auto; min-height: 84px; padding: var(--s3) var(--s4); r
     border-right: 1px solid var(--border); background: var(--surface);
     height: 100%;
   }
-  .sidebar .sidebar-top { display: flex; align-items: center; gap: var(--s2); padding-bottom: var(--s2); }
+  /* Brand + refresh on one row (fits comfortably with a single icon), with a
+     hairline beneath it. The approval / give-way entries live in the nav below
+     as labeled rows, so the header stays uncluttered. */
+  .sidebar .sidebar-top {
+    display: flex; align-items: center; gap: var(--s2);
+    padding-bottom: var(--s4); border-bottom: 1px solid var(--border);
+  }
   .sidebar .sidebar-top .icon-btn { flex: none; }
   .sidebar .brand { display: flex; align-items: center; gap: var(--s2); font-weight: 800; font-size: var(--fs-title); letter-spacing: -.02em; padding: 0 var(--s2); flex: 1; min-width: 0; }
-  .sidebar .brand .mark { width: 30px; height: 30px; }
+  .sidebar .brand .mark { width: 30px; height: 30px; flex: none; }
+  /* Count badge on a nav alert row (Approvals / Give-way), pushed to the right. */
+  .sidebar .nav-badge {
+    margin-left: auto; min-width: 20px; height: 20px; padding: 0 6px; box-sizing: border-box;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: var(--r-pill); background: var(--accent); color: #fff;
+    font-size: var(--fs-micro); font-weight: 800; line-height: 1;
+  }
   .sidebar .nav-link {
     display: flex; align-items: center; gap: var(--s3); padding: var(--s3) var(--s3);
     border-radius: var(--r-md); color: var(--ink-2); font-weight: 600; font-size: var(--fs-body);
@@ -628,8 +696,12 @@ textarea.input { height: auto; min-height: 84px; padding: var(--s3) var(--s4); r
 .brandrow .mark { width: 30px; height: 30px; flex: none; }
 
 /* ---------- LOGIN ---------- */
-.auth-shell { display: grid; place-items: center; padding: var(--s6); }
+/* Flex + margin:auto (not place-items:center) so the card can be scrolled fully
+   into view when the mobile keyboard shrinks the visible area; grid centering
+   would clip the top and refuse to scroll. */
+.auth-shell { display: flex; padding: var(--s6); }
 .auth-card {
+  margin: auto;
   width: 100%; max-width: 430px; position: relative;
   background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--r-xl); box-shadow: var(--shadow-lg);
@@ -920,8 +992,83 @@ textarea.input { height: auto; min-height: 84px; padding: var(--s3) var(--s4); r
 .btn-vote.no:hover { background: color-mix(in srgb, var(--danger) 16%, var(--surface)); }
 .btn-vote.on { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px color-mix(in srgb, currentColor 45%, transparent); }
 
-.poll-admin { display: flex; align-items: center; gap: var(--s2); }
+.poll-admin { display: flex; flex-direction: column; align-items: center; gap: var(--s2); }
 .poll-admin .faint { font-size: var(--fs-micro); font-weight: 800; text-transform: uppercase; letter-spacing: var(--tracking-label); color: var(--ink-3); }
+.poll-admin-actions { display: flex; justify-content: center; gap: var(--s2); }
+
+/* Inline reason composer revealed when declining a proposal */
+.poll-reason { display: flex; flex-direction: column; gap: var(--s2); margin-top: var(--s1); }
+.poll-reason > label { font-weight: 700; font-size: var(--fs-sm); }
+.poll-reason textarea.input { min-height: 64px; }
+.poll-reason .poll-foot { justify-content: flex-end; }
+
+/* Decline notice modal: who declined the proposer's booking, and why */
+.decline-notice { display: flex; flex-direction: column; gap: var(--s5); }
+.decline-slot { display: flex; flex-direction: column; gap: var(--s2); }
+.decline-who { display: inline-flex; align-items: center; gap: var(--s2); font-size: var(--fs-h); }
+.decline-slot .when { color: var(--ink-2); font-size: var(--fs-sm); }
+.decline-reason { display: flex; flex-direction: column; gap: var(--s2); }
+.decline-reason .grouplabel { font-weight: 800; font-size: var(--fs-micro); text-transform: uppercase; letter-spacing: var(--tracking-label); color: var(--ink-3); }
+.decline-reason p { font-size: var(--fs-body); line-height: 1.5; color: var(--ink); background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-md); padding: var(--s3) var(--s4); }
+.decline-reason p.faint { color: var(--ink-3); }
+
+/* A status icon leading the "who" line in the give-way decision / result notices
+   (e.g. the check on "X gave way for you"). Avatars are spans, so this only hits
+   raw icons. */
+.decline-who > svg { width: 20px; height: 20px; flex: none; }
+.decline-who.ok > svg { color: var(--free); }
+
+/* Give-way center: the two sections (asks for you / your asks) */
+.giveway-sections { display: flex; flex-direction: column; gap: var(--s5); }
+.giveway-group { display: flex; flex-direction: column; gap: var(--s3); }
+.giveway-group-label {
+  font-weight: 800; font-size: var(--fs-micro); text-transform: uppercase;
+  letter-spacing: var(--tracking-label); color: var(--ink-3);
+}
+
+/* Give-way: the detail-sheet ask footer states */
+.giveway-foot { align-items: center; justify-content: space-between; }
+.giveway-wait {
+  display: inline-flex; align-items: center; gap: var(--s2); min-width: 0;
+  color: var(--ink-2); font-size: var(--fs-sm); font-weight: 600;
+}
+.giveway-wait svg { width: 16px; height: 16px; flex: none; color: var(--accent); }
+.giveway-wait .nm { font-weight: 700; }
+
+/* Admin override controls on someone else's booking, set apart from the
+   member-facing give-way ask above them. */
+.detail-admin {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--s3);
+  margin-top: var(--s4); padding-top: var(--s4); border-top: 1px solid var(--border);
+}
+.detail-admin .lbl {
+  font-size: var(--fs-micro); font-weight: 800; text-transform: uppercase;
+  letter-spacing: var(--tracking-label); color: var(--ink-3);
+}
+.detail-admin .row { display: flex; gap: var(--s2); }
+
+/* ============================================================
+   MOBILE TUNING
+   ============================================================ */
+
+/* On touch devices, keep form fields at 16px so iOS Safari never auto-zooms
+   (and shifts the layout) when a field is focused. Desktop keeps the designed
+   15.5px. Pinch-zoom stays available. */
+@media (pointer: coarse) {
+  .veloz .input,
+  .veloz .select,
+  .veloz textarea.input { font-size: 16px; }
+}
+
+/* Phone-only: tighten the loose vertical rhythm so more of the Today list is
+   visible above the fold. Components keep their size — only whitespace shrinks.
+   Tablet/desktop are unaffected (they override at min-width 720/1040px). */
+@container app (max-width: 560px) {
+  .content { padding-top: var(--s3); padding-bottom: var(--s5); }
+  .fuel-card { margin-top: var(--s3); }       /* was --s4 */
+  .section-head { margin-top: var(--s5); }    /* was --s7 */
+  .agenda { gap: var(--s2); }                 /* was --s3 */
+}
 
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {

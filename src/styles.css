@@ -15,7 +15,10 @@
   html,
   body,
   #app {
+    /* 100% fallback first; dvh tracks the real viewport so the PWA fills the
+       screen and non-installed Safari is not cut off by browser chrome. */
     height: 100%;
+    height: 100dvh;
     overflow: hidden;
   }
 }

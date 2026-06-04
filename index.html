@@ -3,12 +3,19 @@
 
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- viewport-fit=cover opts into env(safe-area-inset-*) so the iOS PWA can
+       pad around the notch and home indicator (see veloz.css). -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <link rel="icon" href="/favicon.ico" sizes="any" />
   <link rel="icon" href="/veloz-icon.svg" type="image/svg+xml" />
   <meta name="theme-color" content="#16a34a" />
   <meta name="description" content="VelozHub: shared-car booking for the household Toyota Veloz." />
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+  <!-- Installed iOS standalone behaviour. "default" keeps dark status-bar
+       glyphs, readable over the light topbar (the default theme). -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="VelozHub" />
   <!-- The web manifest is generated and injected by vite-plugin-pwa. -->
   <title>VelozHub</title>
 </head>

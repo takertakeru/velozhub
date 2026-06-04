@@ -32,7 +32,7 @@ function rangeFor(draft: BookingDraft) {
     : timedRangeUtc(draft.date, draft.start, draft.end);
 }
 
-async function replaceRiders(bookingId: string, riders: Array<string>) {
+export async function replaceRiders(bookingId: string, riders: Array<string>) {
   const { error: delError } = await supabase
     .from("booking_riders")
     .delete()

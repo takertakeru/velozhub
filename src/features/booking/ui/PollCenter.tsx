@@ -153,11 +153,16 @@ function PollItem({ poll, now }: { poll: PollView; now: number }) {
     ? "All day"
     : `${fmtTime(poll.start)} to ${fmtTime(poll.end)}`;
 
+  // Declining opens an inline reason composer (the reason is optional) rather
+  // than voting on the first tap, so the proposer's notice can explain why.
+  const [isDeclining, setIsDeclining] = useState(false);
+  const [reason, setReason] = useState("");
+
   const isBusy = voteM.isPending || cancelM.isPending || adminM.isPending;
 
-  const vote = (approve: boolean) => {
+  const vote = (approve: boolean, voteReason?: string) => {
     voteM.mutate(
-      { bookingId: poll.id, approve },
+      { bookingId: poll.id, approve, reason: voteReason },
       {
         onError: (err) => {
           notify(err, "Could not record your vote.");
@@ -184,6 +189,84 @@ function PollItem({ poll, now }: { poll: PollView; now: number }) {
       },
     );
   };
+
+  let footView: React.ReactNode;
+
+  if (isDeclining) {
+    footView = (
+      <div className="poll-reason">
+        <label htmlFor={`reason-${poll.id}`}>
+          Reason for declining <span className="faint">(optional)</span>
+        </label>
+        <textarea
+          id={`reason-${poll.id}`}
+          className="input"
+          placeholder="Let them know why, e.g. I need the car then."
+          value={reason}
+          disabled={isBusy}
+          onChange={(e) => {
+            setReason(e.target.value);
+          }}
+        />
+        <div className="poll-foot">
+          <button
+            className="btn"
+            disabled={isBusy}
+            onClick={() => {
+              setIsDeclining(false);
+              setReason("");
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            className="btn btn-danger"
+            disabled={isBusy}
+            onClick={() => {
+              vote(false, reason);
+            }}
+          >
+            <Ic.Close /> Send decline
+          </button>
+        </div>
+      </div>
+    );
+  } else if (isOwner) {
+    footView = (
+      <div className="poll-foot">
+        <button
+          className="btn btn-danger btn-block"
+          disabled={isBusy}
+          onClick={withdraw}
+        >
+          <Ic.Trash /> Withdraw proposal
+        </button>
+      </div>
+    );
+  } else {
+    footView = (
+      <div className="poll-foot">
+        <button
+          className={`btn btn-vote no${myVote && !myVote.approve ? "on" : ""}`}
+          disabled={isBusy}
+          onClick={() => {
+            setIsDeclining(true);
+          }}
+        >
+          <Ic.Close /> Decline
+        </button>
+        <button
+          className={`btn btn-vote yes${myVote?.approve ? "on" : ""}`}
+          disabled={isBusy}
+          onClick={() => {
+            vote(true);
+          }}
+        >
+          <Ic.Check /> Approve
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="poll-item">
@@ -227,60 +310,31 @@ function PollItem({ poll, now }: { poll: PollView; now: number }) {
         })}
       </div>
 
-      <div className="poll-foot">
-        {isOwner ? (
-          <button
-            className="btn btn-danger btn-block"
-            disabled={isBusy}
-            onClick={withdraw}
-          >
-            <Ic.Trash /> Withdraw proposal
-          </button>
-        ) : (
-          <>
-            <button
-              className={`btn btn-vote no${myVote && !myVote.approve ? "on" : ""}`}
-              disabled={isBusy}
-              onClick={() => {
-                vote(false);
-              }}
-            >
-              <Ic.Close /> Decline
-            </button>
-            <button
-              className={`btn btn-vote yes${myVote?.approve ? "on" : ""}`}
-              disabled={isBusy}
-              onClick={() => {
-                vote(true);
-              }}
-            >
-              <Ic.Check /> Approve
-            </button>
-          </>
-        )}
-      </div>
+      {footView}
 
-      {isAdmin && (
+      {isAdmin && !isDeclining && (
         <div className="poll-admin">
           <span className="faint">Admin</span>
-          <button
-            className="btn btn-ghost btn-sm"
-            disabled={isBusy}
-            onClick={() => {
-              adminDecide("confirmed");
-            }}
-          >
-            Confirm now
-          </button>
-          <button
-            className="btn btn-ghost btn-sm"
-            disabled={isBusy}
-            onClick={() => {
-              adminDecide("rejected");
-            }}
-          >
-            Reject
-          </button>
+          <div className="poll-admin-actions">
+            <button
+              className="btn btn-ghost btn-sm"
+              disabled={isBusy}
+              onClick={() => {
+                adminDecide("confirmed");
+              }}
+            >
+              Confirm now
+            </button>
+            <button
+              className="btn btn-ghost btn-sm"
+              disabled={isBusy}
+              onClick={() => {
+                setIsDeclining(true);
+              }}
+            >
+              Reject
+            </button>
+          </div>
         </div>
       )}
     </div>

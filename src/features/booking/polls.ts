@@ -3,7 +3,14 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/libs/supabase/client";
 import { mapBookingError } from "./mutations";
 import { bookingKeys } from "./queries";
-import { type PollRow, type PollView, toPollView } from "./types";
+import {
+  type BookingRowWithRiders,
+  type PollRow,
+  type PollView,
+  type RejectionView,
+  toPollView,
+  toRejectionView,
+} from "./types";
 
 /**
  * Booking polls.
@@ -37,20 +44,27 @@ export function usePolls() {
   });
 }
 
-export type CastVoteInput = { bookingId: string; approve: boolean };
+export type CastVoteInput = {
+  bookingId: string;
+  approve: boolean;
+  /** Optional free-text reason, only meaningful on a decline. */
+  reason?: string;
+};
 
 /**
  * Record this member's approve/decline on a proposal. The RPC resolves the poll
- * server-side: a decline rejects it, a final approval confirms it.
+ * server-side: a decline rejects it (stamping the optional reason and who
+ * declined, for the notice the proposer sees), a final approval confirms it.
  */
 export function useCastVote() {
   const qc = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ bookingId, approve }: CastVoteInput) => {
+    mutationFn: async ({ bookingId, approve, reason }: CastVoteInput) => {
       const { data, error } = await supabase.rpc("cast_booking_vote", {
         p_booking_id: bookingId,
         p_approve: approve,
+        p_reason: reason ?? null,
       });
 
       if (error) {throw error;}
@@ -60,6 +74,60 @@ export function useCastVote() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: bookingKeys.polls });
       void qc.invalidateQueries({ queryKey: bookingKeys.bookings });
+    },
+  });
+}
+
+/**
+ * Proposals the signed-in user made that someone else declined and that they
+ * have not yet acknowledged. Gated on `declined_by` being set and not the
+ * proposer: the slot-taken auto-reject leaves it null, and a self-reject (an
+ * admin rejecting their own proposal) is excluded so you are never notified
+ * about your own decline. Drives the decline notice modal; realtime keeps it
+ * fresh (see `useBookingsRealtime`).
+ */
+export function useMyRejections(me: string) {
+  return useQuery({
+    queryKey: [...bookingKeys.rejections, me],
+    staleTime: 15 * 1000,
+    queryFn: async (): Promise<Array<RejectionView>> => {
+      const { data, error } = await supabase
+        .from("bookings")
+        .select("*, booking_riders(profile_id)")
+        .eq("status", "rejected")
+        .eq("user_id", me)
+        .not("declined_by", "is", null)
+        .neq("declined_by", me)
+        .eq("decline_seen", false)
+        .order("created_at", { ascending: false });
+
+      if (error) {throw error;}
+
+      return (data as unknown as Array<BookingRowWithRiders>).map(
+        toRejectionView,
+      );
+    },
+  });
+}
+
+/**
+ * Mark a declined proposal's notice as seen so it does not pop again. RLS already
+ * lets the proposer update their own booking ("bookings update own or admin").
+ */
+export function useAcknowledgeRejection() {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (bookingId: string) => {
+      const { error } = await supabase
+        .from("bookings")
+        .update({ decline_seen: true })
+        .eq("id", bookingId);
+
+      if (error) {throw error;}
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: bookingKeys.rejections });
     },
   });
 }

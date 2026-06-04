@@ -24,6 +24,19 @@ export function useBookingsRealtime() {
     const invalidateBookingsAndPolls = () => {
       void qc.invalidateQueries({ queryKey: bookingKeys.bookings });
       void qc.invalidateQueries({ queryKey: bookingKeys.polls });
+      // A decline flips a proposal to rejected; refresh the proposer's notice.
+      void qc.invalidateQueries({ queryKey: bookingKeys.rejections });
+    };
+
+    /**
+     * A give-way ask, answer, or claim moves a request between the holder's
+     * inbox and the asker's result notice; giving way also cancels a booking.
+     */
+    const invalidateGiveways = () => {
+      void qc.invalidateQueries({ queryKey: bookingKeys.givewayInbox });
+      void qc.invalidateQueries({ queryKey: bookingKeys.givewayResults });
+      void qc.invalidateQueries({ queryKey: bookingKeys.givewayPending });
+      void qc.invalidateQueries({ queryKey: bookingKeys.bookings });
     };
 
     const channel = supabase
@@ -42,6 +55,11 @@ export function useBookingsRealtime() {
         "postgres_changes",
         { event: "*", schema: "public", table: "booking_votes" },
         invalidateBookingsAndPolls,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "giveway_requests" },
+        invalidateGiveways,
       )
       .on(
         "postgres_changes",

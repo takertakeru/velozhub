@@ -1,6 +1,8 @@
 import type {
   Booking as BookingRow,
   FuelBrand,
+  GivewayRequest,
+  GivewayStatus,
   Profile,
   ProfileRole,
 } from "@/libs/supabase/types";
@@ -77,6 +79,17 @@ export type PollRow = BookingRowWithRiders & {
   booking_votes: Array<{ profile_id: string; approve: boolean }>;
 };
 
+/**
+ * A booking the signed-in user proposed that another member declined, shaped for
+ * the notice modal: the original slot plus who declined and their reason (null
+ * when they gave none).
+ */
+export type RejectionView = BookingView & {
+  /** Profile id of the member who declined; null for non-member rejections. */
+  declinedBy: string | null;
+  reason: string | null;
+};
+
 /** Selectable gas-station brands, in the order shown in the log form. */
 export const fuelBrands: ReadonlyArray<FuelBrand> = [
   "Petron",
@@ -125,6 +138,61 @@ export function toPollView(row: PollRow): PollView {
     ...toBookingView(row),
     deadline: row.poll_deadline,
     votes: row.booking_votes.map((v) => ({ profileId: v.profile_id, approve: v.approve })),
+  };
+}
+
+/**
+ * A give-way request, shaped for the UI: the contested slot in Manila-local
+ * parts plus both parties, the asker's reason, the current status, and the
+ * holder's reason on a decline. Drives both the holder's inbox and the asker's
+ * result notice. Derived from a row via `toGivewayView`.
+ */
+export type GivewayView = {
+  id: string;
+  /** The contested confirmed booking. */
+  bookingId: string;
+  /** Profile id of the asker. */
+  fromUser: string;
+  /** Profile id of the current holder. */
+  toUser: string;
+  /** Manila local date, "yyyy-MM-dd". */
+  date: string;
+  allDay: boolean;
+  /** "HH:mm" Manila local; empty when allDay. */
+  start: string;
+  end: string;
+  /** The asker's reason for asking; null when none given. */
+  reason: string | null;
+  status: GivewayStatus;
+  /** The holder's reason on a decline; null otherwise. */
+  responseReason: string | null;
+};
+
+/** Map a give-way request row (UTC slot) to the Manila-local UI shape. */
+export function toGivewayView(row: GivewayRequest): GivewayView {
+  const { dateISO, start, end } = localPartsOf(row.start_at, row.end_at);
+
+  return {
+    id: row.id,
+    bookingId: row.booking_id,
+    fromUser: row.from_user,
+    toUser: row.to_user,
+    date: dateISO,
+    allDay: row.all_day,
+    start: row.all_day ? "" : start,
+    end: row.all_day ? "" : end,
+    reason: row.reason,
+    status: row.status,
+    responseReason: row.response_reason,
+  };
+}
+
+/** Map a rejected booking row to the notice shape (slot + decliner + reason). */
+export function toRejectionView(row: BookingRowWithRiders): RejectionView {
+  return {
+    ...toBookingView(row),
+    declinedBy: row.declined_by,
+    reason: row.decline_reason,
   };
 }
 
