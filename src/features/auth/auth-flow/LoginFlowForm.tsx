@@ -1,5 +1,5 @@
 import "@/components/veloz/veloz.css";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -37,47 +37,33 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
-/** Nudge a freshly focused field above the keyboard once it has animated in. */
-function scrollFieldIntoView(target: HTMLElement) {
-  window.setTimeout(() => {
-    target.scrollIntoView({ block: "center", behavior: "smooth" });
-  }, 300);
-}
-
 export function LoginFlowForm() {
   const navigate = useNavigate();
   const [theme, setTheme] = useState<VelozTheme>(initialVelozTheme);
-  const surfaceRef = useRef<HTMLDivElement>(null);
 
   /**
-   * On iOS the on-screen keyboard overlays the page instead of resizing it, so
-   * `100dvh` stays full height and the scroll container never gets short enough
-   * to scroll the focused field above the keyboard. We track the real visible
-   * height with the visualViewport API and pin the surface to it, which makes
-   * the card overflow (and therefore scroll) while the keyboard is up.
+   * On iOS the keyboard overlays the page instead of shrinking it, so a centred
+   * card that fits in `100dvh` has no room to scroll the focused field above the
+   * keyboard. While a field is focused we add a `kb` class that opens up extra
+   * scroll space at the bottom; one smooth `scrollIntoView` then lifts the
+   * field into the visible area. The surface itself stays full height, so the
+   * dark background keeps filling the screen (no white gaps).
    */
-  // eslint-disable-next-line fsecond/valid-event-listener
-  useEffect(() => {
-    const vv = window.visualViewport;
-    const el = surfaceRef.current;
+  const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
 
-    if (!vv || !el) {
-      return;
-    }
+  const onFieldFocus = (event: React.FocusEvent<HTMLInputElement>) => {
+    setIsKeyboardOpen(true);
+    const field = event.currentTarget;
 
-    const apply = () => {
-      el.style.height = `${vv.height}px`;
-    };
+    // Wait for the keyboard to start animating in before scrolling.
+    window.setTimeout(() => {
+      field.scrollIntoView({ block: "center", behavior: "smooth" });
+    }, 250);
+  };
 
-    apply();
-    vv.addEventListener("resize", apply);
-    vv.addEventListener("scroll", apply);
-
-    return () => {
-      vv.removeEventListener("resize", apply);
-      vv.removeEventListener("scroll", apply);
-    };
-  }, []);
+  const onFieldBlur = () => {
+    setIsKeyboardOpen(false);
+  };
 
   const form = useForm<FormData>({
     defaultValues: { name: "", password: "" },
@@ -85,6 +71,7 @@ export function LoginFlowForm() {
   });
 
   const selectedName = form.watch("name");
+  const passwordField = form.register("password");
 
   const onSubmitHandler = form.handleSubmit(async (data) => {
     const driver = drivers.find((d) => d.name === data.name);
@@ -123,7 +110,10 @@ export function LoginFlowForm() {
   const isLoading = form.formState.isSubmitting;
 
   return (
-    <div className="veloz surface" data-theme={theme} ref={surfaceRef}>
+    <div
+      className={`veloz surface auth-surface${isKeyboardOpen ? " kb" : ""}`}
+      data-theme={theme}
+    >
       <div className="auth-shell">
         <form className="auth-card" onSubmit={onSubmitHandler}>
           <div className="auth-top">
@@ -201,9 +191,11 @@ export function LoginFlowForm() {
               className="input"
               autoComplete="current-password"
               placeholder="Your password"
-              {...form.register("password")}
-              onFocus={(e) => {
-                scrollFieldIntoView(e.currentTarget);
+              {...passwordField}
+              onFocus={onFieldFocus}
+              onBlur={(e) => {
+                onFieldBlur();
+                void passwordField.onBlur(e);
               }}
             />
             {passwordError && <FieldError message={passwordError} />}
