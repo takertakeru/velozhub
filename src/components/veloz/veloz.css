@@ -164,9 +164,9 @@
 .tabbar {
   flex: none; z-index: 40;
   display: grid; grid-template-columns: repeat(5, 1fr);
-  align-items: center;
-  padding: var(--s2) calc(var(--s3) + var(--safe-right))
-           calc(var(--s2) + 4px + var(--safe-bottom)) calc(var(--s3) + var(--safe-left));
+  align-items: end;
+  padding: var(--s3) calc(var(--s3) + var(--safe-right))
+           calc(var(--s1) + var(--safe-bottom)) calc(var(--s3) + var(--safe-left));
   background: var(--surface);
   border-top: 1px solid var(--border);
 }
@@ -177,7 +177,8 @@
   white-space: nowrap;
 }
 .tab svg { width: 24px; height: 24px; }
-.tab.active { color: var(--ink); }
+.tab.active { color: var(--accent); }
+.tab.active svg { color: var(--accent); }
 .tab.fab { color: var(--primary-ink); }
 .tab.fab .fab-circle {
   width: 52px; height: 52px; border-radius: var(--r-pill);
@@ -206,18 +207,30 @@
   display: inline-flex; align-items: center; justify-content: center; gap: var(--s2);
   height: 50px; padding: 0 var(--s5); border-radius: calc(var(--r-md) * var(--radius-scale));
   font-weight: 700; font-size: var(--fs-body); white-space: nowrap;
-  border: 1px solid transparent; transition: transform .08s ease, background .15s ease, border-color .15s;
+  border: 1px solid transparent;
+  transition: background .15s ease, border-color .15s ease, box-shadow .15s ease,
+              color .15s ease, transform .08s ease;
 }
-.btn:active { transform: translateY(1px) scale(.995); }
+/* Buttons rest static and clean. The only motion is a small press on tap; the
+   hover is a quiet shade + soft elevation, applied per variant below. */
+.btn:active { transform: translateY(1px); }
 .btn svg { width: 19px; height: 19px; }
-.btn-primary { background: var(--primary); color: var(--primary-ink); }
-/* Hover shifts the fill toward the background (lighter in light mode, darker in
-   dark mode) and pins the text color, so contrast never drops. */
-.btn-primary:hover { background: color-mix(in srgb, var(--primary) 86%, var(--bg)); color: var(--primary-ink); }
-.btn-ghost { background: var(--surface); border-color: var(--border-strong); color: var(--ink); }
-.btn-ghost:hover { background: var(--surface-2); border-color: var(--ink-3); color: var(--ink); }
-.btn-danger { background: var(--danger-bg); color: var(--danger); border-color: color-mix(in srgb, var(--danger) 30%, transparent); }
-.btn-danger:hover { background: color-mix(in srgb, var(--danger) 16%, var(--surface)); }
+
+.btn-primary { background: var(--primary); color: var(--primary-ink); border-color: color-mix(in srgb, var(--primary) 72%, #000); }
+/* Hover nudges the fill toward the background and adds a soft shadow for a
+   subtle, modern lift in place without moving the element. */
+.btn-primary:hover {
+  background: color-mix(in srgb, var(--primary) 88%, var(--bg));
+  border-color: color-mix(in srgb, var(--primary) 60%, #000);
+  color: var(--primary-ink); box-shadow: var(--shadow-sm);
+}
+
+.btn-ghost { background: var(--surface-2); border-color: var(--border-strong); color: var(--ink); }
+.btn-ghost:hover { background: var(--bg-2); border-color: var(--ink-3); color: var(--ink); box-shadow: var(--shadow-sm); }
+
+.btn-danger { background: var(--danger-bg); color: var(--danger); border-color: color-mix(in srgb, var(--danger) 48%, transparent); }
+.btn-danger:hover { background: color-mix(in srgb, var(--danger) 18%, var(--surface)); border-color: color-mix(in srgb, var(--danger) 68%, transparent); box-shadow: var(--shadow-sm); }
+
 .btn-block { width: 100%; }
 .btn-sm { height: 40px; padding: 0 var(--s4); font-size: var(--fs-sm); }
 
@@ -500,7 +513,7 @@ textarea.input { height: auto; min-height: 84px; padding: var(--s3) var(--s4); r
 /* ============================================================
    MODAL / SHEET
    ============================================================ */
-.scrim { position: absolute; inset: 0; z-index: 50; background: color-mix(in srgb, #05070c 55%, transparent); backdrop-filter: blur(2px); display: flex; flex-direction: column; justify-content: flex-end; }
+.scrim { position: fixed; inset: 0; z-index: 50; background: color-mix(in srgb, #05070c 55%, transparent); backdrop-filter: blur(2px); display: flex; flex-direction: column; justify-content: flex-end; }
 .sheet {
   width: 100%; background: var(--surface); border-radius: var(--r-xl) var(--r-xl) 0 0;
   box-shadow: var(--shadow-lg); display: flex; flex-direction: column;
@@ -514,7 +527,11 @@ textarea.input { height: auto; min-height: 84px; padding: var(--s3) var(--s4); r
 .sheet-head h2 { font-size: var(--fs-title); font-weight: 800; letter-spacing: -.02em; }
 .sheet-title { flex: 1; min-width: 0; }
 .sheet-title p { color: var(--ink-3); font-size: var(--fs-sm); margin-top: 1px; }
-.sheet-body { padding: var(--s5) var(--s4); overflow-y: auto; }
+/* Pin the x-axis: without overflow-x: hidden, iOS momentum scrolling lets the
+   body pan sideways on a sub-pixel-wide child (native date/time controls, focus
+   rings) and keeps it offset, clipping the left edge of every row. Android does
+   not retain that pan, which is why the drift only showed on iPhone. */
+.sheet-body { padding: var(--s5) var(--s4); overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; }
 .sheet-foot { padding: var(--s4) var(--s4) calc(var(--s4) + var(--safe-bottom)); border-top: 1px solid var(--border); display: flex; gap: var(--s3); background: var(--surface); }
 
 /* Booking detail sheet */

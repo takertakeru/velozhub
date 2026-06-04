@@ -767,7 +767,7 @@ export function DetailSheet({
           />
           <div className="poll-foot">
             <button
-              className="btn"
+              className="btn btn-ghost"
               onClick={() => {
                 setIsAsking(false);
                 setAskReason("");
