@@ -10,7 +10,10 @@
 /* ---------- Reset-ish ---------- */
 *, *::before, *::after { box-sizing: border-box; }
 .veloz, .veloz * { margin: 0; padding: 0; }
-.veloz button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; }
+/* Neutralize native button chrome via :where() so this reset carries zero
+   specificity — the .btn / .icon-btn classes below (single-class selectors) then
+   win for their own background + border instead of being overridden here. */
+.veloz :where(button) { font: inherit; color: inherit; background: none; border: none; cursor: pointer; }
 .veloz input, .veloz select, .veloz textarea { font: inherit; color: inherit; }
 .veloz ul, .veloz li { list-style: none; }
 .veloz :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
@@ -236,10 +239,10 @@
 
 .icon-btn {
   width: 44px; height: 44px; border-radius: var(--r-md); display: grid; place-items: center;
-  color: var(--ink-2); border: 1px solid transparent;
+  color: var(--ink-2); border: 1px solid var(--border-strong);
 }
-.icon-btn:hover { background: var(--surface-2); color: var(--ink); }
-.icon-btn.active { background: var(--bg-2); color: var(--ink); }
+.icon-btn:hover { background: var(--surface-2); color: var(--ink); border-color: var(--ink-3); }
+.icon-btn.active { background: var(--bg-2); color: var(--ink); border-color: var(--ink-3); }
 .icon-btn svg { width: 22px; height: 22px; }
 
 @keyframes veloz-spin { to { transform: rotate(360deg); } }
@@ -1010,8 +1013,8 @@ textarea.input { height: auto; min-height: 84px; padding: var(--s3) var(--s4); r
 
 .poll-foot { display: flex; gap: var(--s3); margin-top: var(--s1); }
 .btn-vote { flex: 1; }
-.btn-vote.yes { background: var(--accent); color: #fff; border-color: transparent; }
-.btn-vote.yes:hover { background: color-mix(in srgb, var(--accent) 88%, #000); color: #fff; }
+.btn-vote.yes { background: var(--accent); color: #fff; border-color: color-mix(in srgb, var(--accent) 64%, #000); }
+.btn-vote.yes:hover { background: color-mix(in srgb, var(--accent) 88%, #000); color: #fff; border-color: color-mix(in srgb, var(--accent) 52%, #000); }
 .btn-vote.no { background: var(--danger-bg); color: var(--danger); border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent); }
 .btn-vote.no:hover { background: color-mix(in srgb, var(--danger) 16%, var(--surface)); }
 .btn-vote.on { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px color-mix(in srgb, currentColor 45%, transparent); }
