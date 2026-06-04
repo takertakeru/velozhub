@@ -731,9 +731,14 @@ textarea.input { height: auto; min-height: 84px; padding: var(--s3) var(--s4); r
 /* While a field is focused the iOS keyboard overlays the page. We pin the card
    to the top and open scroll room below it so the focused field can be smoothly
    scrolled above the keyboard. The surface keeps full height, so the dark
-   background still fills the screen. */
-.auth-surface.kb .auth-card { margin-block: 0; }
-.auth-surface.kb .auth-shell { padding-bottom: 60vh; }
+   background still fills the screen.
+
+   Gated to touch devices (mobile / installed PWA): on desktop there is no
+   overlaying soft keyboard, so the card would just jump around for no reason. */
+@media (pointer: coarse) {
+  .auth-surface.kb .auth-card { margin-block: 0; }
+  .auth-surface.kb .auth-shell { padding-bottom: 60vh; }
+}
 .auth-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--s6); }
 .auth-top .brandrow { font-size: var(--fs-title); }
 .auth-title { font-size: var(--fs-display); line-height: var(--lh-display); letter-spacing: -.025em; font-weight: 800; }
