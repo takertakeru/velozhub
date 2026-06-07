@@ -75,6 +75,13 @@ export function useBookingsRealtime() {
           void qc.invalidateQueries({ queryKey: bookingKeys.fuelLogs });
         },
       )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "member_status" },
+        () => {
+          void qc.invalidateQueries({ queryKey: bookingKeys.statuses });
+        },
+      )
       .subscribe();
 
     return () => {

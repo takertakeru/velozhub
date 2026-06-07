@@ -1,5 +1,6 @@
 export * from "./conflicts";
 export * from "./ics";
+export * from "./member-status";
 export * from "./mutations";
 export * from "./nudges";
 export * from "./queries";

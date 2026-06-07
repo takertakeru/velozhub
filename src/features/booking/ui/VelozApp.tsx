@@ -74,6 +74,7 @@ import {
   StatsScreen,
   WeekScreen,
 } from "./screens";
+import { StatusPicker } from "./StatusStrip";
 
 type Screen = "home" | "week" | "stats" | "fuel";
 type FormState =
@@ -363,6 +364,7 @@ function Shell({
   const [screen, setScreen] = useState<Screen>("home");
   const [detailId, setDetailId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(null);
+  const [isStatusOpen, setIsStatusOpen] = useState(false);
 
   const queryClient = useQueryClient();
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -732,6 +734,7 @@ function Shell({
           onOpen={setDetailId}
           onRequest={requestCar}
           onOpenFuelHistory={() => { setScreen("fuel"); }}
+          onEditStatus={() => { setIsStatusOpen(true); }}
         />
       );
       break;
@@ -923,6 +926,13 @@ function Shell({
             incoming={givewayInbox}
             outgoing={myPendingGiveways}
             onClose={minimizeGiveways}
+          />
+        )}
+        {isStatusOpen && (
+          <StatusPicker
+            wide={isWide}
+            householdId={householdId}
+            onClose={() => { setIsStatusOpen(false); }}
           />
         )}
       </div>

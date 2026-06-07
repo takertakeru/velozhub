@@ -18,6 +18,7 @@ export const bookingKeys = {
   givewayResults: ["giveway-results"] as const,
   givewayPending: ["giveway-pending"] as const,
   fuelLogs: ["fuel-logs"] as const,
+  statuses: ["member-status"] as const,
 };
 
 export type PeopleData = {

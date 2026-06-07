@@ -42,6 +42,7 @@ import {
   usePerson,
 } from "./context";
 import { FuelGauge } from "./FuelGauge";
+import { StatusStrip } from "./StatusStrip";
 
 /** Day-of-month (1-31) for a "yyyy-MM-dd" date string. */
 const dayNum = (iso: string) => Number(iso.split("-")[2]);
@@ -127,12 +128,14 @@ export function HomeScreen({
   onOpen,
   onRequest,
   onOpenFuelHistory,
+  onEditStatus,
 }: {
   bookings: Array<BookingView>;
   wide: boolean;
   onOpen: (id: string) => void;
   onRequest: (booking: BookingView) => void;
   onOpenFuelHistory: () => void;
+  onEditStatus: () => void;
 }) {
   const today = todayManilaISO();
   const status = useMemo(() => dayStatus(today, bookings), [today, bookings]);
@@ -167,6 +170,7 @@ export function HomeScreen({
     return (
       <div className="content">
         <StatusBanner status={status} onRequest={onRequest} />
+        <StatusStrip onEdit={onEditStatus} />
         <FuelGauge wide={wide} onOpenHistory={onOpenFuelHistory} />
         <div className="section-head">
           <h2>Today</h2>
@@ -190,6 +194,7 @@ export function HomeScreen({
       <div className="home-grid">
         <div className="today-col">
           <StatusBanner status={status} onRequest={onRequest} />
+          <StatusStrip onEdit={onEditStatus} />
           <FuelGauge wide={wide} onOpenHistory={onOpenFuelHistory} />
           <div className="section-head">
             <h2>Today&apos;s bookings</h2>
@@ -886,8 +891,8 @@ export function DetailSheet({
 
           {!canManage && (
             <div className="lock-note">
-              <Ic.Lock /> Only {p.name} can edit this trip. Ask them to give way to
-              take the slot.
+              <Ic.Lock /> Only {p.name} can edit this trip.
+              {canAsk && " Ask them to give way to take the slot."}
             </div>
           )}
           {!isMine && isAdmin && (
