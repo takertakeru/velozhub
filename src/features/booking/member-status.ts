@@ -8,20 +8,21 @@ import { type StatusView, toStatusView } from "./types";
 /**
  * Going-out status (a soft "what I'm thinking" signal, weaker than a booking).
  *
- * Each member has at most one current status, aimed at a single Manila day.
- * `useMemberStatuses` reads everyone's current ones (stale days are filtered out
- * server-side, so a "tomorrow" status becomes "today" on its own and an old one
- * just disappears). `useSetMyStatus` upserts the signed-in user's status;
- * `useClearMyStatus` removes it. Realtime keeps the household in sync; see
- * `useBookingsRealtime`. See `supabase/migrations/0012_member_status.sql`.
+ * A member may hold one status per day (today and/or tomorrow), so plans can be
+ * set ahead. `useMemberStatuses` reads everyone's current ones as a flat list
+ * (stale days are filtered out server-side, so a "tomorrow" status becomes
+ * "today" on its own and an old one just disappears). `useSaveMyStatuses` writes
+ * the signed-in user's plans for a set of days in one shot: a day with an intent
+ * is upserted, a day with a null intent is cleared. Realtime keeps the household
+ * in sync; see `useBookingsRealtime` and `supabase/migrations/0012_member_status.sql`.
  */
 
-/** Everyone's current status, keyed by profile id (at most one per person). */
+/** Everyone's current statuses (today and later), newest day last. */
 export function useMemberStatuses() {
   return useQuery({
     queryKey: bookingKeys.statuses,
     staleTime: 30 * 1000,
-    queryFn: async (): Promise<Record<string, StatusView>> => {
+    queryFn: async (): Promise<Array<StatusView>> => {
       const { data, error } = await supabase
         .from("member_status")
         .select("*")
@@ -29,62 +30,68 @@ export function useMemberStatuses() {
 
       if (error) {throw error;}
 
-      const byId: Record<string, StatusView> = {};
-
-      for (const row of data as Array<MemberStatus>) {
-        byId[row.user_id] = toStatusView(row);
-      }
-
-      return byId;
+      return (data as Array<MemberStatus>).map(toStatusView);
     },
   });
 }
 
-export type SetStatusInput = {
-  householdId: string;
-  /** The signed-in user's profile id. */
-  me: string;
-  intent: StatusIntent;
-  /** Manila local date the status is about, "yyyy-MM-dd". */
+/** One day's desired plan. A null `intent` means "clear that day". */
+export type DayPlan = {
+  /** Manila local date the plan is about, "yyyy-MM-dd". */
   forDate: string;
+  intent: StatusIntent | null;
   note?: string;
 };
 
-/** Set (or replace) the signed-in user's status. Upsert keyed on user_id. */
-export function useSetMyStatus() {
-  const qc = useQueryClient();
+export type SaveStatusesInput = {
+  householdId: string;
+  /** The signed-in user's profile id. */
+  me: string;
+  days: Array<DayPlan>;
+};
 
-  return useMutation({
-    mutationFn: async ({ householdId, me, intent, forDate, note }: SetStatusInput) => {
-      const { error } = await supabase.from("member_status").upsert(
-        {
-          user_id: me,
-          household_id: householdId,
-          intent,
-          for_date: forDate,
-          note: note?.trim() || null,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "user_id" },
-      );
-
-      if (error) {throw error;}
-    },
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: bookingKeys.statuses });
-    },
-  });
+/** Narrows a DayPlan to one that actually carries an intent (is being set). */
+function isSet(day: DayPlan): day is DayPlan & { intent: StatusIntent } {
+  return day.intent !== null;
 }
 
-/** Clear the signed-in user's status. */
-export function useClearMyStatus() {
+/**
+ * Save the signed-in user's plans for several days at once. Days with an intent
+ * are upserted (keyed on user_id + for_date); days with a null intent are
+ * deleted, so deselecting a day clears it.
+ */
+export function useSaveMyStatuses() {
   const qc = useQueryClient();
 
   return useMutation({
-    mutationFn: async (me: string) => {
-      const { error } = await supabase.from("member_status").delete().eq("user_id", me);
+    mutationFn: async ({ householdId, me, days }: SaveStatusesInput) => {
+      const toUpsert = days.filter(isSet).map((day) => { return {
+        user_id: me,
+        household_id: householdId,
+        intent: day.intent,
+        for_date: day.forDate,
+        note: day.note?.trim() || null,
+        updated_at: new Date().toISOString(),
+      } });
+      const toClear = days.filter((day) => day.intent === null).map((day) => day.forDate);
 
-      if (error) {throw error;}
+      if (toUpsert.length > 0) {
+        const { error } = await supabase
+          .from("member_status")
+          .upsert(toUpsert, { onConflict: "user_id,for_date" });
+
+        if (error) {throw error;}
+      }
+
+      if (toClear.length > 0) {
+        const { error } = await supabase
+          .from("member_status")
+          .delete()
+          .eq("user_id", me)
+          .in("for_date", toClear);
+
+        if (error) {throw error;}
+      }
     },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: bookingKeys.statuses });

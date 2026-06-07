@@ -92,6 +92,14 @@ export type RejectionView = BookingView & {
   reason: string | null;
 };
 
+/**
+ * Character caps for free-text fields, shared by the inputs and mirrored by DB
+ * checks. `STATUS_NOTE_MAX` is a tight glance-hint (migration 0014); `NOTE_MAX`
+ * covers the longer booking note and the ask/decline/keep reasons (0015).
+ */
+export const STATUS_NOTE_MAX = 30;
+export const NOTE_MAX = 140;
+
 /** Selectable gas-station brands, in the order shown in the log form. */
 export const fuelBrands: ReadonlyArray<FuelBrand> = [
   "Petron",

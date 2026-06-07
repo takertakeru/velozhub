@@ -22,11 +22,12 @@ import {
   relDayLabel,
   todayManilaISO,
 } from "../time";
-import type { BookingDraft, BookingView } from "../types";
+import { type BookingDraft, type BookingView , NOTE_MAX } from "../types";
 import {
   AgendaItem,
   AllDayTag,
   Avatar,
+  CharCount,
   ConflictWarning,
   EmptyDay,
   PersonChip,
@@ -550,10 +551,11 @@ export function BookingForm({
               id="bk-note"
               className="input"
               placeholder="Where to, or anything the family should know"
-              maxLength={120}
+              maxLength={NOTE_MAX}
               value={draft.note}
-              onChange={(e) => { set({ note: e.target.value }); }}
+              onChange={(e) => { set({ note: e.target.value.slice(0, NOTE_MAX) }); }}
             />
+            <CharCount value={draft.note} max={NOTE_MAX} />
           </div>
 
           {valid.ok ? (
@@ -767,9 +769,11 @@ export function DetailSheet({
             id={`ask-${booking.id}`}
             className="input"
             placeholder="Let them know why, e.g. I have a doctor's appointment."
+            maxLength={NOTE_MAX}
             value={askReason}
-            onChange={(e) => { setAskReason(e.target.value); }}
+            onChange={(e) => { setAskReason(e.target.value.slice(0, NOTE_MAX)); }}
           />
+          <CharCount value={askReason} max={NOTE_MAX} />
           <div className="poll-foot">
             <button
               className="btn btn-ghost"
