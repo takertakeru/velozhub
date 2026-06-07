@@ -14,8 +14,8 @@ import * as Ic from "@/components/veloz/icons";
 import { useCancelBooking } from "../mutations";
 import { useAdminDecidePoll, useCastVote } from "../polls";
 import { fmtTime, fullDate, relDayLabel } from "../time";
-import type { PollView } from "../types";
-import { Avatar } from "./components";
+import { NOTE_MAX, type PollView } from "../types";
+import { Avatar, CharCount } from "./components";
 import {
   personOf,
   useBookingUi,
@@ -202,12 +202,14 @@ function PollItem({ poll, now }: { poll: PollView; now: number }) {
           id={`reason-${poll.id}`}
           className="input"
           placeholder="Let them know why, e.g. I need the car then."
+          maxLength={NOTE_MAX}
           value={reason}
           disabled={isBusy}
           onChange={(e) => {
-            setReason(e.target.value);
+            setReason(e.target.value.slice(0, NOTE_MAX));
           }}
         />
+        <CharCount value={reason} max={NOTE_MAX} />
         <div className="poll-foot">
           <button
             className="btn btn-ghost"

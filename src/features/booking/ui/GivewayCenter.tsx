@@ -19,8 +19,8 @@ import { toaster } from "@/components/ui/toast";
 import * as Ic from "@/components/veloz/icons";
 import { useRespondGiveway, useWithdrawGiveway } from "../giveway";
 import { fmtTime, fullDate, relDayLabel } from "../time";
-import type { GivewayView } from "../types";
-import { Avatar } from "./components";
+import { type GivewayView,NOTE_MAX } from "../types";
+import { Avatar, CharCount } from "./components";
 import { personOf, useBookingUi } from "./context";
 
 /** Surface a mutation failure as a toast. */
@@ -178,12 +178,14 @@ function GivewayIncomingItem({ request }: { request: GivewayView }) {
             id={`keep-${request.id}`}
             className="input"
             placeholder="Let them know why, e.g. I need the car then."
+            maxLength={NOTE_MAX}
             value={reason}
             disabled={isBusy}
             onChange={(e) => {
-              setReason(e.target.value);
+              setReason(e.target.value.slice(0, NOTE_MAX));
             }}
           />
+          <CharCount value={reason} max={NOTE_MAX} />
           <div className="poll-foot">
             <button
               className="btn btn-ghost"

@@ -1115,6 +1115,11 @@ textarea.input { height: auto; min-height: 84px; padding: var(--s3) var(--s4); r
 .plan-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .plan-text b { font-size: var(--fs-body); font-weight: 800; letter-spacing: -.01em; }
 .plan-sub { font-size: var(--fs-sm); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* One line per day on the pill (today + tomorrow), note appended in dim. */
+.plan-line { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+.plan-line b { font-size: var(--fs-body); font-weight: 800; letter-spacing: -.01em; white-space: nowrap; }
+.plan-line-note { font-size: var(--fs-sm); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.plan-line-note::before { content: "\00b7\00a0"; }
 .plan-edit {
   flex: none; font-size: var(--fs-sm); font-weight: 700; color: var(--ink-2);
   padding: var(--s2) var(--s3); border-radius: var(--r-pill); background: var(--surface-2);
@@ -1136,12 +1141,28 @@ textarea.input { height: auto; min-height: 84px; padding: var(--s3) var(--s4); r
 .plan-chip-name { font-size: var(--fs-sm); font-weight: 700; line-height: 1.15; letter-spacing: -.01em; }
 .plan-chip-state { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-micro); font-weight: 700; line-height: 1.15; color: var(--ic, var(--ink-3)); }
 .plan-chip-state svg { width: 13px; height: 13px; }
+.plan-chip-note { font-size: var(--fs-micro); font-weight: 600; color: var(--ink-3); max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Staying-in plans sit quietly: they signal the car is free, not contested. */
 .plan-chip[data-intent="not"] { opacity: .6; }
 
 .plan-seg { display: flex; gap: var(--s2); }
 .plan-seg .chip.selectable { flex: 1; justify-content: center; gap: var(--s2); }
 .plan-seg .chip.selectable svg { width: 16px; height: 16px; }
+
+/* Picker: one editable block per day (Today, Tomorrow). */
+.plan-day { margin-bottom: var(--s6); }
+.plan-day:last-child { margin-bottom: 0; }
+.plan-day-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: var(--s2); }
+.plan-day-head > span:first-child { font-weight: 800; font-size: var(--fs-body); letter-spacing: -.01em; }
+.plan-day-head .d { color: var(--ink-3); font-weight: 600; font-size: var(--fs-sm); }
+.plan-note { position: relative; margin-top: var(--s2); }
+.plan-note .input { padding-right: 56px; }
+.plan-note-count {
+  position: absolute; right: var(--s3); top: 50%; transform: translateY(-50%);
+  font-size: var(--fs-micro); font-weight: 600; color: var(--ink-3); pointer-events: none;
+}
+/* Counter under a note/reason textarea (booking note, ask/decline/keep reasons). */
+.char-count { display: block; margin-top: 4px; text-align: right; font-size: var(--fs-micro); font-weight: 600; color: var(--ink-3); }
 
 /* Phone-only: tighten the loose vertical rhythm so more of the Today list is
    visible above the fold. Components keep their size — only whitespace shrinks.

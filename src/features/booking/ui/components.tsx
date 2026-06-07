@@ -70,6 +70,15 @@ export function Switch({
   );
 }
 
+/** Right-aligned "n/max" counter shown under a note/reason field. */
+export function CharCount({ value, max }: { value: string; max: number }) {
+  return (
+    <span className="char-count">
+      {value.length}/{max}
+    </span>
+  );
+}
+
 /** Inline "with X & Y" rider summary for an agenda row. */
 function RiderSummary({ riders }: { riders: Array<string> }) {
   const { people } = useBookingUi();
