@@ -52,6 +52,12 @@ export function LoginFlowForm() {
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
 
   const onFieldFocus = (event: React.FocusEvent<HTMLInputElement>) => {
+    // A soft keyboard only overlays the page on touch devices. On desktop there
+    // is none, so engaging this would just shove the card up for no reason.
+    if (!window.matchMedia("(pointer: coarse)").matches) {
+      return;
+    }
+
     setIsKeyboardOpen(true);
     const field = event.currentTarget;
 

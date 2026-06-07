@@ -21,6 +21,12 @@ export type GivewayStatus =
   | "declined"
   | "withdrawn"
   | "claimed";
+/**
+ * A member's going-out intent for a given day: definitely taking the car
+ * ('going'), might ('maybe'), or staying in ('not'). See
+ * `supabase/migrations/0012_member_status.sql`.
+ */
+export type StatusIntent = "going" | "maybe" | "not";
 /** Gas-station brands we track; "Others" is the catch-all for anything else. */
 export type FuelBrand =
   | "Petron"
@@ -150,6 +156,21 @@ export type GivewayRequest = {
   resolved_at: string | null;
 };
 
+/**
+ * A member's current going-out status. `user_id` is the primary key (one row
+ * per person, upsert replaces it); `for_date` is the Manila local date it is
+ * about, so reads keep only today or later and stale ones expire on their own.
+ * See `supabase/migrations/0012_member_status.sql`.
+ */
+export type MemberStatus = {
+  user_id: string;
+  household_id: string;
+  intent: StatusIntent;
+  for_date: string;
+  note: string | null;
+  updated_at: string;
+};
+
 type TableShape<Row, Insert, Update> = {
   Row: Row;
   Insert: Insert;
@@ -250,6 +271,11 @@ export type Database = {
         },
         Partial<GivewayRequest>
       >;
+      member_status: TableShape<
+        MemberStatus,
+        Omit<MemberStatus, "updated_at"> & { updated_at?: string },
+        Partial<MemberStatus>
+      >;
     };
     Views: Record<string, never>;
     Functions: {
@@ -277,6 +303,7 @@ export type Database = {
       profile_role: ProfileRole;
       booking_status: BookingStatus;
       giveway_status: GivewayStatus;
+      status_intent: StatusIntent;
     };
     CompositeTypes: Record<string, never>;
   };

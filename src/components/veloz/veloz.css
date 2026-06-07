@@ -1067,12 +1067,64 @@ textarea.input { height: auto; min-height: 84px; padding: var(--s3) var(--s4); r
   .veloz textarea.input { font-size: 16px; }
 }
 
+/* Going-out status: the "your plan" pill + the "who's driving" strip on Home,
+   and the picker sheet's segmented rows. Intent colour rides on --ic, set
+   per-element so going/maybe/not share one rule set. */
+.plan-block { margin-top: var(--s4); display: flex; flex-direction: column; gap: var(--s3); }
+
+.plan-card {
+  display: flex; align-items: center; gap: var(--s4); width: 100%; text-align: left;
+  padding: var(--s4); background: var(--surface); border: 1px solid var(--border);
+  border-radius: calc(var(--r-lg) * var(--radius-scale)); box-shadow: var(--shadow-sm);
+  cursor: pointer; transition: border-color .15s, background .15s;
+}
+.plan-card:hover { border-color: var(--ink-3); }
+.plan-card[data-intent] { border-left: 4px solid var(--ic); }
+.plan-icon {
+  width: 42px; height: 42px; flex: none; border-radius: var(--r-md); display: grid; place-items: center;
+  color: var(--ic, var(--ink-2));
+  background: color-mix(in srgb, var(--ic, var(--ink-3)) 14%, var(--tint-base));
+}
+.plan-icon svg { width: 22px; height: 22px; }
+.plan-card.is-empty .plan-icon { color: var(--ink-3); background: var(--surface-2); }
+.plan-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.plan-text b { font-size: var(--fs-body); font-weight: 800; letter-spacing: -.01em; }
+.plan-sub { font-size: var(--fs-sm); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.plan-edit {
+  flex: none; font-size: var(--fs-sm); font-weight: 700; color: var(--ink-2);
+  padding: var(--s2) var(--s3); border-radius: var(--r-pill); background: var(--surface-2);
+}
+
+.plan-strip { display: flex; flex-direction: column; gap: var(--s2); }
+.plan-strip-label { font-size: var(--fs-micro); font-weight: 800; letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--ink-3); }
+.plan-strip-row { display: flex; flex-wrap: wrap; gap: var(--s3); }
+/* A balanced "media" chip: avatar spans both text lines, equal padding all
+   round, rounded-rect (not a capsule) so two lines never bulge the sides. */
+.plan-chip {
+  display: inline-flex; align-items: center; gap: var(--s3);
+  padding: 6px var(--s4) 6px 6px;
+  border-radius: calc(var(--r-lg) * var(--radius-scale));
+  background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-sm);
+}
+.plan-chip .avatar { width: 34px; height: 34px; font-size: 13px; }
+.plan-chip-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.plan-chip-name { font-size: var(--fs-sm); font-weight: 700; line-height: 1.15; letter-spacing: -.01em; }
+.plan-chip-state { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-micro); font-weight: 700; line-height: 1.15; color: var(--ic, var(--ink-3)); }
+.plan-chip-state svg { width: 13px; height: 13px; }
+/* Staying-in plans sit quietly: they signal the car is free, not contested. */
+.plan-chip[data-intent="not"] { opacity: .6; }
+
+.plan-seg { display: flex; gap: var(--s2); }
+.plan-seg .chip.selectable { flex: 1; justify-content: center; gap: var(--s2); }
+.plan-seg .chip.selectable svg { width: 16px; height: 16px; }
+
 /* Phone-only: tighten the loose vertical rhythm so more of the Today list is
    visible above the fold. Components keep their size — only whitespace shrinks.
    Tablet/desktop are unaffected (they override at min-width 720/1040px). */
 @container app (max-width: 560px) {
   .content { padding-top: var(--s3); padding-bottom: var(--s5); }
   .fuel-card { margin-top: var(--s3); }       /* was --s4 */
+  .plan-block { margin-top: var(--s3); }      /* was --s4 */
   .section-head { margin-top: var(--s5); }    /* was --s7 */
   .agenda { gap: var(--s2); }                 /* was --s3 */
 }

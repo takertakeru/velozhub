@@ -3,8 +3,10 @@ import type {
   FuelBrand,
   GivewayRequest,
   GivewayStatus,
+  MemberStatus,
   Profile,
   ProfileRole,
+  StatusIntent,
 } from "@/libs/supabase/types";
 import { localPartsOf } from "./time";
 
@@ -184,6 +186,32 @@ export function toGivewayView(row: GivewayRequest): GivewayView {
     reason: row.reason,
     status: row.status,
     responseReason: row.response_reason,
+  };
+}
+
+/**
+ * A member's going-out status, shaped for the UI: whose it is, the intent, the
+ * Manila local date it is about, and an optional note. One per person. Derived
+ * from a row via `toStatusView`; `intentLabel` turns it into the banner text.
+ */
+export type StatusView = {
+  /** Profile id of the member whose status this is. */
+  userId: string;
+  intent: StatusIntent;
+  /** Manila local date, "yyyy-MM-dd". */
+  date: string;
+  note: string | null;
+  updatedAt: string;
+};
+
+/** Map a member-status row to the UI shape. */
+export function toStatusView(row: MemberStatus): StatusView {
+  return {
+    userId: row.user_id,
+    intent: row.intent,
+    date: row.for_date,
+    note: row.note,
+    updatedAt: row.updated_at,
   };
 }
 
